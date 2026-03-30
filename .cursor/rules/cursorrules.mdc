@@ -1,0 +1,117 @@
+---
+description: QGIS Layer Slider plugin conventions and coding patterns
+alwaysApply: true
+---
+
+# QGIS Layer Slider Plugin
+
+This is a QGIS plugin (Python) providing a dock widget for navigating and toggling layer visibility via a slider control.
+
+## Project Structure
+
+```
+__init__.py              # QGIS entry point (classFactory)
+metadata.txt             # QGIS plugin metadata ([general] section)
+src/
+  LayerSlider.py         # Plugin orchestrator (toolbar, menu, dock lifecycle)
+  LayerSliderDockWidget.py     # QgsDockWidget with slider/tree/visibility logic
+  LayerSliderDockWidgetBase.ui # Qt Designer UI form for dock widget
+  SettingsDialog.py      # Compose/cache settings dialog
+  SettingsDialogBase.ui  # Qt Designer UI form for settings dialog
+  ExportDialog.py        # Export destination dialog
+  ExportDialogBase.ui    # Qt Designer UI form for export dialog
+  ComposeManager.py      # Compose orchestration (precalc, dynamic layers)
+  DynamicLayerFactory.py # Raster averaging via QgsRasterCalculator + GDAL
+  DynamicLayerExporter.py  # Context-menu export of dynamic layers
+  LayerRangeMapper.py    # Slider ↔ layer-index mapping logic
+  GlobalSettings.py      # QSettings-backed persistence
+  PlusSpinBox.py         # Custom QSpinBox with signed display
+assets/                  # Icons (SVG/PNG)
+```
+
+## UI File Convention
+
+- Prefer Qt Designer `.ui` files for widget layout and static properties.
+- In Python, load forms with `uic.loadUiType(...)`, inherit `FORM_CLASS`, and call `self.setupUi(self)` in `__init__`.
+- Keep runtime-only behavior in Python: signal/slot wiring, icon loading, combo population with `userData`, settings-driven values, conditional visibility.
+- Naming: use `<WidgetName>Base.ui`, place `.ui` next to its `.py` file in `src/`.
+- Exception: skip `.ui` extraction when the widget structure is mostly dynamic at runtime.
+
+## Naming Conventions
+
+- **Files**: PascalCase matching primary class (e.g. `DynamicLayerFactory.py` → `DynamicLayerFactory`)
+- **Classes**: PascalCase (`LayerSliderDockWidget`, `GlobalSettings`)
+- **Methods/functions**: snake_case (`toggle_dock`, `apply_visibility_from_index`)
+- **Private helpers**: underscore prefix (`_attach_to_layer_tree_model_root`)
+- **Constants**: UPPER_SNAKE_CASE (`PLUGIN_DIR`, `CACHE_DIR`)
+- **Assets**: kebab-case (`link-variant.svg`)
+
+## Imports
+
+- Use `qgis.PyQt` for all Qt imports (NOT `PyQt5` / `PyQt6` directly):
+  ```python
+  from qgis.PyQt.QtCore import Qt, QTimer, pyqtSignal
+  from qgis.PyQt.QtWidgets import QAction, QSlider
+  from qgis.PyQt import uic
+  ```
+- Use `qgis.core` / `qgis.gui` for QGIS API:
+  ```python
+  from qgis.core import QgsProject, QgsRasterLayer, QgsLayerTreeGroup
+  from qgis.gui import QgisInterface, QgsDockWidget
+  ```
+- Use relative imports within `src/`:
+  ```python
+  from .GlobalSettings import GlobalSettings
+  from .DynamicLayerFactory import DynamicLayerFactory
+  ```
+
+## QGIS Plugin Patterns
+
+- Entry point: `classFactory(iface)` in `__init__.py` returns the main plugin class
+- Plugin class implements `initGui()` and `unload()` lifecycle methods
+- Store `iface: QgisInterface` as instance attribute for QGIS interaction
+- Use `QgsDockWidget` (not plain `QDockWidget`) for dock widgets
+- Load UI forms via `uic.loadUiType("....ui")` as `FORM_CLASS`
+- Set stable `setObjectName()` on dock widgets for layout persistence
+- Use `QTimer.singleShot()` for deferred initialization during project load
+
+## Signal/Slot Patterns
+
+- Connect QGIS project signals: `QgsProject.instance().layersAdded`, `layersRemoved`, etc.
+- Connect layer tree signals on model root group (guard with `hasattr` + try/except)
+- Always disconnect signals explicitly in `unload()` or teardown methods
+- Use `pyqtSignal` for custom signals on widgets
+
+## Shortcut Handling
+
+- Register plugin shortcuts through a single helper (for example `register_shortcut`) that does all of: `iface.registerMainWindowAction`, plugin menu registration, `QgsGui.shortcutsManager().registerAction`, and signal connection for the action handler.
+- Every shortcut that is shown in UI text (tooltip/button label/helper text) must provide an `on_keys_changed` callback and connect `action.changed` to it.
+- The `on_keys_changed` callback must recompute and reapply the tooltip/label text using the current key sequence (`action.shortcut().toString()`), so reassigned keys in QGIS are reflected immediately.
+- Do not hardcode shortcut strings in tooltips for actions that are configurable. Keep only static fallback hints (for example mouse-only interactions) hardcoded.
+- Ensure teardown symmetry: disconnect `action.changed` handlers and unregister each action in `unregister_shortcut` / `unload`.
+- Shortcut-triggered behavior and shortcut-display behavior should be kept separate (trigger methods do work; setter/update methods only refresh UI text).
+
+## Error Handling
+
+- Guard QGIS/Qt API calls with `try/except Exception` to survive binding differences or mid-teardown state
+- Use `traceback.print_exc()` for debugging failures
+- Use re-entrancy guards (lock counters) when handlers trigger structural changes
+
+## Layer Manipulation
+
+- Prefer `QgsLayerTreeNode.setItemVisibilityChecked()` for toggling layer visibility
+- Access tree model via `iface.layerTreeView().layerTreeModel().rootGroup()`
+- Mark dynamic/temporary layers with `setCustomProperty()` for identification and cleanup
+- Use `QgsProject.addMapLayer(..., addToLegend=False)` when manually placing layers in the tree
+
+## Settings Persistence
+
+- Use `QSettings` with a consistent prefix key for all plugin settings
+- Expose settings via class methods on `GlobalSettings`
+
+## General Guidelines
+
+- No automated test suite exists yet — when adding tests, use `pytest` with `qgis.testing`
+- GDAL (`osgeo.gdal`) is available via the QGIS Python environment — no pip install needed
+- Target Python 3.10+ (union type syntax `X | None` is used)
+- Target QGIS 3.x (despite metadata saying 3.0, modern APIs are used)

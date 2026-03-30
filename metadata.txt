@@ -1,0 +1,56 @@
+# This file contains metadata for your plugin.
+
+# This file should be included when you package your plugin.# Mandatory items:
+
+[general]
+name=Layer Slider
+qgisMinimumVersion=3.0
+description=Navigate and compose ordered layers with a slider, keyboard shortcuts, and dynamic raster compositing.
+version=1.0.0
+author=Maximilian Obermayer
+email=software@mobermayer.at
+
+about=Layer Slider is a QGIS plugin for navigating and composing ordered layers or layer groups with an intuitive slider, keyboard shortcuts, and dynamic layer compositing.
+
+    It is designed for any workflow where you need to flip through a sequence of layers — whether they represent increasing depth (e.g. GPR depth slices), successive points in time (e.g. historical satellite imagery), or alternative visualizations of the same area (e.g. DTM hillshade, slope, aspect). Key features include slider and keyboard navigation, dynamic averaged raster composites, full layer tree integration, caching, and GeoTIFF export.
+
+    For a demo, instructions and comparison to alternatives, see the homepage.
+
+    If you use Layer Slider in your academic work, please cite it:
+    Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.19341476 . Available at: https://github.com/mobermayer/layer-slider
+
+    For collaboration and research- or software-related inquiries, visit my homepage https://mobermayer.at .
+
+tracker=https://github.com/mobermayer/layer-slider/issues
+repository=https://github.com/mobermayer/layer-slider
+# End of mandatory metadata
+
+# Recommended items:
+
+license=GNU General Public License v3 (or later)
+hasProcessingProvider=no
+# Uncomment the following line and add your changelog:
+# changelog=
+
+# Tags are comma separated with spaces allowed
+tags=layer,raster,slider,compositing,navigation,archaeology,gpr,ground penetrating radar,remote sensing,time series,depth slices
+
+homepage=https://github.com/mobermayer/layer-slider/blob/main/README.md
+icon=assets/icon.png
+# experimental flag
+experimental=False
+
+# deprecated flag (applies to the whole plugin, not just a single version)
+deprecated=False
+
+# Since QGIS 3.8, a comma separated list of plugins to be installed
+# (or upgraded) can be specified.
+# Check the documentation for more information.
+# plugin_dependencies=
+
+Category of the plugin: Raster, Vector, Database or Web
+category=Plugins
+
+# If the plugin can run on QGIS Server.
+server=False
+

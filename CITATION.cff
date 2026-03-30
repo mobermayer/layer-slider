@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+title: "Layer Slider – QGIS Plugin"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - given-names: Maximilian
+    family-names: Obermayer
+    email: software@mobermayer.at
+    orcid: https://orcid.org/0009-0001-8100-3355
+repository-code: "https://github.com/mobermayer/layer-slider"
+license: GPL-3.0-or-later
+version: 1.0.0
+doi: "10.5281/zenodo.19341476"
+date-released: "2026-03-30"
+keywords:
+  - QGIS
+  - plugin
+  - raster
+  - layer navigation
+  - ground-penetrating radar
+  - GPR
+  - archaeology
+  - remote sensing
+  - dynamic compositing
+abstract: >-
+  Layer Slider is a QGIS plugin for navigating and composing
+  ordered layers or layer groups with an intuitive slider,
+  keyboard shortcuts, and dynamic layer compositing. It supports
+  any workflow involving sequential spatial data: from GPR depth
+  slices and historical satellite imagery to DTM visualizations
+  and multi-temporal environmental monitoring.
