@@ -35,7 +35,7 @@ hasProcessingProvider=no
 # Tags are comma separated with spaces allowed
 tags=layer,raster,slider,compositing,navigation,archaeology,gpr,ground penetrating radar,remote sensing,time series,depth slices
 
-homepage=https://github.com/mobermayer/layer-slider/blob/main/README.md
+homepage=https://github.com/mobermayer/layer-slider
 icon=assets/icon.png
 # experimental flag
 experimental=False
