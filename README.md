@@ -1,4 +1,4 @@
-# Layer Slider – QGIS Plugin [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19341476.svg)](https://doi.org/10.5281/zenodo.19341476)
+# Layer Slider – QGIS Plugin [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19341475.svg)](https://doi.org/10.5281/zenodo.19341475)
 
 <p align="center">
   <img src="assets/icon.svg" alt="Layer Slider plugin icon" width="72" height="72" />
@@ -77,9 +77,9 @@ All shortcuts can be customized (and unbound ones assigned) in `Settings > Keybo
 
 GPR Depth Composer included in ArchaeoAnalyst is an ArcGIS toolset that can compute combined depth slices of varying thickness (see [Trinks et al. 2018, p. 20](https://onlinelibrary.wiley.com/doi/10.1002/arp.1599) for a short description). Layer Slider offers comparable compositing functionality, but runs inside QGIS (free & open-source) and works with arbitrary layer types (e. g. GeoTIFF rasters).
 
-## Citing Layer Slider [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19341476.svg)](https://doi.org/10.5281/zenodo.19341476)
+## Citing Layer Slider [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19341475.svg)](https://doi.org/10.5281/zenodo.19341475)
 
-If you use Layer Slider in your academic work, please cite it:
+If you use Layer Slider in your academic work, please cite it (or whichever version you use):
 
 > Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.19341476 . Available at https://github.com/mobermayer/layer-slider
 
