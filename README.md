@@ -40,6 +40,7 @@ To show the widget, click on the plugin's icon in the plugins toolbar or under `
 Note that the individual layers must be inside a group in the QGIS layer tree.
 This plugin provides an improved UI for interacting with these data, not the data themselves.
 Compositing currently only works on local raster layers with the `gdal` provider (e.g. GeoTIFF) and outputs grayscale images.
+Composed layers can be exported by `right-click > Export composed layer...` on the composed layer or `shift+click` on the pre-calculate button.
 
 ### Key features
 
@@ -77,7 +78,7 @@ All shortcuts can be customized (and unbound ones assigned) in `Settings > Keybo
 
 GPR Depth Composer included in ArchaeoAnalyst is an ArcGIS toolset that can compute combined depth slices of varying thickness (see [Trinks et al. 2018, p. 20](https://onlinelibrary.wiley.com/doi/10.1002/arp.1599) for a short description). Layer Slider offers comparable compositing functionality, but runs inside QGIS (free & open-source) and works with arbitrary layer types (e. g. GeoTIFF rasters).
 
-## Citing Layer Slider [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19341475.svg)](https://doi.org/10.5281/zenodo.19341475)
+## Citing Layer Slider
 
 If you use Layer Slider in your academic work, please cite it (or whichever version you use):
 
@@ -146,11 +147,9 @@ Zenodo distinguishes a *concept DOI* (stable across all releases; good for READM
 Create a new version on Zenodo as a draft and copy its **version-specific DOI** (do not release it yet).
 Update these places so the **version string**, **year**, and **DOIs** match what Zenodo and GitHub show:
 
-| Location | What to update |
-|----------|----------------|
-| [`metadata.txt`](metadata.txt) | `version=`, and the citation sentence inside the `about=` block (version, year, DOI URL). |
-| [`README.md`](README.md) | DOI badge URLs in the title and [Citing Layer Slider](#citing-layer-slider), and the example citation block under that section. |
-| [`CITATION.cff`](CITATION.cff) | `version`, `doi`, and `date-released`. |
+- [`metadata.txt`](metadata.txt): `version=`, and the citation sentence inside the `about=` block (version, year, DOI URL)
+- [`README.md`](README.md): version, year and DOI URL in [Citing Layer Slider](#citing-layer-slider)
+- [`CITATION.cff`](CITATION.cff): `version`, `doi`, and `date-released`
 
 ### 3. Build
 
@@ -170,6 +169,10 @@ Confirm the ZIP under `release/layer_slider-<version>/` installs and runs in QGI
 
 #### 4.3. QGIS plugin repository
 - Upload the same `layer_slider-<version>.zip` to the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/)
+
+## Changelog
+
+Release notes and version history are in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
