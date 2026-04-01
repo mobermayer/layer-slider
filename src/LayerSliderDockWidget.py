@@ -809,30 +809,34 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if not self.group_layers:
             return
 
-        g = self.current_group_node
-        while g and isinstance(g, QgsLayerTreeGroup):
-            g.setItemVisibilityChecked(True)
-            g = g.parent()
-
         layers_to_average: List[QgsRasterLayer] = []
-        for rangeIndex, layer_range in enumerate(self.get_layer_ranges()):
-            if rangeIndex == idx:
-                if len(layer_range) == 1:
-                    for i in layer_range:
-                        node = self.group_layers[i]
-                        node.setItemVisibilityChecked(True)
-                        self.repaint_safe(node)
+        self.update_lock += 1
+        try:
+            g = self.current_group_node
+            while g and isinstance(g, QgsLayerTreeGroup):
+                g.setItemVisibilityChecked(True)
+                g = g.parent()
+
+            for rangeIndex, layer_range in enumerate(self.get_layer_ranges()):
+                if rangeIndex == idx:
+                    if len(layer_range) == 1:
+                        for i in layer_range:
+                            node = self.group_layers[i]
+                            node.setItemVisibilityChecked(True)
+                            self.repaint_safe(node)
+                    else:
+                        nodes = [self.group_layers[i] for i in layer_range]
+                        for node in nodes:
+                            node.setItemVisibilityChecked(False)
+                        layers = [node.layer() for node in nodes if isinstance(node, QgsLayerTreeLayer)]
+                        layers_to_average = [layer for layer in layers if isinstance(layer, QgsRasterLayer)]
+                        if len(nodes) != len(layers_to_average):
+                            raise Exception("Received non-raster-layer to average")
                 else:
-                    nodes = [self.group_layers[i] for i in layer_range]
-                    for node in nodes:
-                        node.setItemVisibilityChecked(False)
-                    layers = [node.layer() for node in nodes if isinstance(node, QgsLayerTreeLayer)]
-                    layers_to_average = [layer for layer in layers if isinstance(layer, QgsRasterLayer)]
-                    if len(nodes) != len(layers_to_average):
-                        raise Exception("Received non-raster-layer to average")
-            else:
-                for i in layer_range:
-                    self.group_layers[i].setItemVisibilityChecked(False)
+                    for i in layer_range:
+                        self.group_layers[i].setItemVisibilityChecked(False)
+        finally:
+            self.update_lock -= 1
 
         self._update_label_only(idx)
         self.update_btn_reset_text()
@@ -891,8 +895,12 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
 
         if not self.group_layers:
             return
-        for node in self.group_layers:
-            node.setItemVisibilityChecked(visible)
+        self.update_lock += 1
+        try:
+            for node in self.group_layers:
+                node.setItemVisibilityChecked(visible)
+        finally:
+            self.update_lock -= 1
 
         self.iface.mapCanvas().refresh()
 
