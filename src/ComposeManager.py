@@ -194,10 +194,9 @@ class ComposeManager:
                 min_label = str(range_min).zfill(width)
                 max_label = str(range_max).zfill(width)
                 if prefix:
-                    return f"{prefix}_{operation_name}_{min_label}-{max_label}"
-                return f"{operation_name}_{n} {min_label}-{max_label}"
+                    return f"{prefix}_{min_label}-{max_label} {operation_name}_{n}"
 
-        return f"{operation_name}_{n} {first_name} – {last_name}"
+        return f"{first_name} — {last_name} {operation_name}_{n}"
 
     @staticmethod
     def sanitize_export_filename(value: str) -> str:
@@ -477,7 +476,7 @@ class ComposeManager:
             original_group_name = self.dock.current_group_node.name() or "Project Root"
         else:
             original_group_name = "Project Root"
-        return f"{operation_name}_{n} {original_group_name}"
+        return f"{original_group_name} {operation_name}_{n}"
 
     def _create_precalc_export_group(self, operation: str) -> QgsLayerTreeGroup:
         parent_group = QgsProject.instance().layerTreeRoot()
