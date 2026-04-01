@@ -178,26 +178,6 @@
         <bold>false</bold>
        </font>
       </property>
-      <property name="styleSheet">
-       <string notr="true">QSlider::groove:horizontal {
-    background-color: palette(mid);
-    border: 1px solid palette(shadow);
-    height: 6px;
-    border-radius: 3px;
-}
-QSlider::sub-page:horizontal,
-QSlider::add-page:horizontal {
-    background: transparent;
-    border: none;
-}
-QSlider::handle:horizontal {
-    background-color: #25b026;
-    border: 1px solid rgba(255, 255, 255, 255);
-    border-radius: 4px;
-    width: 18px;
-    margin: -12px 0;
-}</string>
-      </property>
       <property name="minimum">
        <number>0</number>
       </property>

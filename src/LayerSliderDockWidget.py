@@ -8,6 +8,7 @@ from qgis.PyQt.QtWidgets import (
     QSlider,
     QSpinBox,
     QStyle,
+    QStyleOptionSlider,
     QToolButton,
 )
 from qgis.gui import QgsDockWidget
@@ -21,7 +22,7 @@ from qgis.core import (
     QgsLayerTreeLayer,
     QgsRasterLayer,
 )
-from qgis.PyQt.QtCore import Qt, QTimer, pyqtSignal
+from qgis.PyQt.QtCore import QEvent, Qt, QTimer, pyqtSignal
 import os
 
 from .PlusSpinBox import PlusSpinBox
@@ -32,6 +33,40 @@ from . import LayerRangeMapper
 from .SettingsDialog import SettingsDialog
 
 FORM_CLASS_LAYER, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), 'LayerSliderDockWidgetBase.ui'))
+
+# Used as empty-group size and minimum width when the thumb is sized to groove / n.
+_SLIDER_HANDLE_MIN_WIDTH = 18
+# Horizontal inset (each side) so a single full-span handle stays inside the groove (no right-edge clip).
+_SLIDER_SINGLE_ITEM_INSET_PX = 2
+
+_SLIDER_HANDLE_STYLE_ACTIVE = (
+    "background-color: #25b026;\n"
+    "    border: 1px solid rgba(255, 255, 255, 255);"
+)
+_SLIDER_HANDLE_STYLE_EMPTY_GROUP = (
+    "background-color: #b0b0b0;\n"
+    "    border: 1px solid rgba(255, 255, 255, 255);"
+)
+
+_SLIDER_STYLESHEET_TEMPLATE = """QSlider::groove:horizontal {{
+    background-color: palette(mid);
+    border: 1px solid palette(shadow);
+    height: 6px;
+    border-radius: 3px;
+    margin: 0px;
+    padding: 0px {groove_hmargin}px;
+}}
+QSlider::sub-page:horizontal,
+QSlider::add-page:horizontal {{
+    background: transparent;
+    border: none;
+}}
+QSlider::handle:horizontal {{
+    {handle_style}
+    border-radius: 4px;
+    width: {handle_width}px;
+    margin: -12px -{groove_hmargin}px;
+}}"""
 
 
 class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
@@ -107,6 +142,9 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         # UI signals
         self.slider.valueChanged.connect(self.on_slider_changed)
         self.slider.sliderPressed.connect(self._mark_user_interaction)
+        self.slider.rangeChanged.connect(self._update_slider_handle_style)
+        self.slider.installEventFilter(self)
+        QTimer.singleShot(0, self._update_slider_handle_style)
 
         self.chk_lockgroups.toggled.connect(self.on_chk_lockgroups_toggled)
         self.combo_group.currentIndexChanged.connect(self.on_combo_changed)
@@ -124,8 +162,8 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         pj.layersRemoved.connect(self._on_project_layers_changed)
 
         self._connect_selection_signals()
-        QgsProject.instance().aboutToBeCleared.connect(self._disconnect_selection_signals)
-        QgsProject.instance().readProject.connect(self._connect_selection_signals)
+        QgsProject.instance().aboutToBeCleared.connect(self._on_project_about_to_clear)
+        QgsProject.instance().readProject.connect(self._on_project_read)
         self.exporter.connect_tree_context_menu()
 
         self.compose.remove_stale_dynamic_layers()
@@ -133,9 +171,63 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
 
         QTimer.singleShot(200, self._initial_populate_and_bind)
 
+    def eventFilter(self, obj, event):
+        if obj is self.slider and event.type() == QEvent.Resize:
+            self._update_slider_handle_style()
+        return False
+
+    def _update_slider_handle_style(self):
+        if self._unloaded:
+            return
+        try:
+            s = self.slider
+            opt = QStyleOptionSlider()
+            s.initStyleOption(opt)
+            groove = s.style().subControlRect(
+                QStyle.CC_Slider, opt, QStyle.SC_SliderGroove, s
+            )
+            gw = groove.width() if groove and groove.width() > 0 else max(1, s.width() - 8)
+            if not self.group_layers:
+                hw = _SLIDER_HANDLE_MIN_WIDTH
+                gm = max(0, hw // 2)
+                handle_style = _SLIDER_HANDLE_STYLE_EMPTY_GROUP
+            else:
+                n = max(1, s.maximum() - s.minimum() + 1)
+                if n <= 1:
+                    inset = _SLIDER_SINGLE_ITEM_INSET_PX if gw > 8 else 1
+                    gm = inset
+                    hw = max(1, gw - 2 * inset)
+                    handle_style = _SLIDER_HANDLE_STYLE_ACTIVE
+                else:
+                    hw = max(
+                        _SLIDER_HANDLE_MIN_WIDTH,
+                        int(round(gw / float(n))),
+                    )
+                    gm = max(1, hw // 2)
+                    handle_style = _SLIDER_HANDLE_STYLE_ACTIVE
+            text = _SLIDER_STYLESHEET_TEMPLATE.format(
+                handle_width=hw,
+                groove_hmargin=gm,
+                handle_style=handle_style,
+            )
+            if getattr(self, "_slider_qss_applied", None) == text:
+                return
+            self._slider_qss_applied = text
+            s.setStyleSheet(text)
+        except Exception:
+            pass
+
     def unload(self):
         self._unloaded = True
         self.compose.cancel_background_tasks()
+        try:
+            self.slider.removeEventFilter(self)
+        except Exception:
+            pass
+        try:
+            self.slider.rangeChanged.disconnect(self._update_slider_handle_style)
+        except Exception:
+            pass
 
         pj = QgsProject.instance()
         try:
@@ -184,6 +276,44 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         except Exception:
             pass
         self._lt_selection_model = None
+
+    def _on_project_about_to_clear(self):
+        self._disconnect_selection_signals()
+        self._reset_dock_mode_for_new_project(run_unlock_side_effects=False)
+
+    def _on_project_read(self):
+        self._connect_selection_signals()
+        self._reset_dock_mode_for_new_project(run_unlock_side_effects=True)
+
+    def _reset_dock_mode_for_new_project(self, run_unlock_side_effects: bool = False):
+        if self._unloaded:
+            return
+        was_locked = False
+        try:
+            was_locked = self.chk_lockgroups.isChecked()
+        except Exception:
+            pass
+        self.compose.invalidate_single_compose_request(cancel_task=False)
+        self.compose.remove_dynamic_node()
+        try:
+            self.chk_lockgroups.blockSignals(True)
+            self.chk_avgrasters.blockSignals(True)
+            self.chk_lockgroups.setChecked(False)
+            self.chk_avgrasters.setChecked(False)
+        except Exception:
+            pass
+        try:
+            self.chk_lockgroups.blockSignals(False)
+            self.chk_avgrasters.blockSignals(False)
+        except Exception:
+            pass
+        self.update_lockgroups_layout()
+        self.compose.update_precalc_button_state()
+        if run_unlock_side_effects and was_locked:
+            try:
+                self.on_chk_lockgroups_toggled(False)
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # Layer tree root attachment
@@ -713,24 +843,59 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if group is None or not self._node_belongs_to_root(group):
             group = getattr(self, "_root_group", QgsProject.instance().layerTreeRoot())
 
+        prev_group = self.current_group_node
+        if (
+            prev_group is not None
+            and group != prev_group
+            and self.chk_avgrasters.isChecked()
+        ):
+            self.chk_avgrasters.blockSignals(True)
+            self.chk_avgrasters.setChecked(False)
+            self.chk_avgrasters.blockSignals(False)
+            self.compose.invalidate_single_compose_request(cancel_task=False)
+            self.compose.remove_dynamic_node()
+
         if group != self.current_group_node:
             self.compose.invalidate_single_compose_request(cancel_task=False)
         self.current_group_node = group
 
-        if self.chk_avgrasters.isChecked():
-            children = [
-                c for c in group.children()
-                if isinstance(c, QgsLayerTreeLayer) and ComposeManager.is_dynamiclayer_compatible(c.layer())
-            ]
-        else:
-            children = [c for c in group.children() if isinstance(c, (QgsLayerTreeLayer, QgsLayerTreeGroup))]
+        av_children = [
+            c
+            for c in group.children()
+            if isinstance(c, QgsLayerTreeLayer) and ComposeManager.is_dynamiclayer_compatible(c.layer())
+        ]
+        norm_children = [
+            c for c in group.children() if isinstance(c, (QgsLayerTreeLayer, QgsLayerTreeGroup))
+        ]
 
-        self.group_layers = children
+        if self.chk_avgrasters.isChecked():
+            preview_ranges = LayerRangeMapper.layer_ranges_for_count(
+                len(av_children), True, **self._get_range_params(),
+            )
+            if not preview_ranges:
+                self.chk_avgrasters.blockSignals(True)
+                self.chk_avgrasters.setChecked(False)
+                self.chk_avgrasters.blockSignals(False)
+                self.compose.invalidate_single_compose_request(cancel_task=False)
+                self.compose.remove_dynamic_node()
+                self.group_layers = norm_children
+            else:
+                self.group_layers = av_children
+        else:
+            self.group_layers = norm_children
 
         if not self.group_layers:
+            self.slider.blockSignals(True)
+            try:
+                self.slider.setMinimum(0)
+                self.slider.setMaximum(0)
+                self.slider.setValue(0)
+            finally:
+                self.slider.blockSignals(False)
             self.slider.setEnabled(False)
             self.label_index.setText("No children in group")
             self.compose.update_precalc_button_state()
+            self._update_slider_handle_style()
             return
 
         self.update_btn_reset_text()
@@ -750,6 +915,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         self.slider.setEnabled(True)
         self._update_label_only(initial_idx)
         self.compose.update_precalc_button_state()
+        self._update_slider_handle_style()
 
     # ------------------------------------------------------------------
     # Layer range mapping (delegated to LayerRangeMapper)
@@ -861,8 +1027,14 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
     # Label / button state
     # ------------------------------------------------------------------
     def _update_label_only(self, idx: int):
-        idx = self.limit_slider_index(idx)
         layer_ranges = self.get_layer_ranges()
+        if not layer_ranges:
+            if self.group_layers:
+                self.label_index.setText("—")
+            else:
+                self.label_index.setText("No children in group")
+            return
+        idx = self.limit_slider_index(idx)
         layer_range = layer_ranges[idx]
 
         if not self.chk_avgrasters.isChecked():
