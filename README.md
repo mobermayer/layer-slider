@@ -91,7 +91,15 @@ A machine-readable [`CITATION.cff`](CITATION.cff) file is included in this repos
 
 Install directly via the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/) in QGIS. Search for `Layer Slider` in the QGIS plugin manager and install.
 
-### Manual / development install
+### Install manually
+
+1. Download the release ZIP from [GitHub Releases](https://github.com/mobermayer/layer-slider/releases) (attach the built `layer_slider-<version>.zip` for each release).
+2. In QGIS, open **Plugins → Manage and Install Plugins…**.
+3. Go to **Install from ZIP**, choose the downloaded ZIP file, then click **Install Plugin**.
+
+> **Note:** You will **not** receive automatic updates in the Plugin Manager; upgrade by downloading a newer release ZIP and installing it again (or switch to the [repository install](#from-the-qgis-plugin-repository-recommended) for updates).
+
+### Development install
 
 1. Download or clone this repository.
 2. Symlink or copy the folder into your QGIS plugins directory.
@@ -130,17 +138,17 @@ ln -s "$(pwd)/layer-slider" ~/.local/share/QGIS/QGIS3/profiles/default/python/pl
 
 The version number is read from `metadata.txt`.
 
-## Releasing a new version
+### Releasing a new version
 
 Use this checklist so the plugin version, citations, and published artifacts stay in sync.
 
-### 1. Version and changelog
+#### 1. Version and changelog
 
 - Bump `version=` in [`metadata.txt`](metadata.txt) (this value drives `./scripts/build.sh` and the QGIS Plugin Manager)
 - Update [`CHANGELOG.md`](CHANGELOG.md) with version and contents
 - Update `changelog=` line in [`metadata.txt`](metadata.txt) for QGIS plugin repository
 
-### 2. Zenodo DOI and citations
+#### 2. Zenodo DOI and citations
 
 Zenodo distinguishes a *concept DOI* (stable across all releases; good for README badges) from a version-specific DOI*.
 Create a new version on Zenodo as a draft and copy its **version-specific DOI** (do not release it yet).
@@ -150,7 +158,7 @@ Update these places so the **version string**, **year**, and **DOIs** match what
 - [`README.md`](README.md): version, year and DOI URL in [Citing Layer Slider](#citing-layer-slider)
 - [`CITATION.cff`](CITATION.cff): `version`, `doi`, and `date-released`
 
-### 3. Build
+#### 3. Build
 
 ```bash
 ./scripts/build.sh
@@ -158,15 +166,19 @@ Update these places so the **version string**, **year**, and **DOIs** match what
 
 Confirm the ZIP under `release/layer_slider-<version>/` installs and runs in QGIS before you publish it.
 
-### 4. Release
-#### 4.1. GitHub release and tag
+#### 4. Publish
+
+##### 4.1. GitHub release and tag
+
 - Commit all version and citation changes on `main` (or release branch)
 - create a **Release** from with a new tag, add release notes, and attach the built `layer_slider-<version>.zip` and `layer_slider-<version>.zip.md5`
 
-#### 4.2. Zenodo
+##### 4.2. Zenodo
+
 - Manually upload the same `layer_slider-<version>.zip` and `layer_slider-<version>.zip.md5` to the draft and publish the record
 
-#### 4.3. QGIS plugin repository
+##### 4.3. QGIS plugin repository
+
 - Upload the same `layer_slider-<version>.zip` to the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/)
 
 ## Changelog
