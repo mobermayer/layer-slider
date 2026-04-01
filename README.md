@@ -34,7 +34,7 @@ https://github.com/user-attachments/assets/1ee1a25f-c6ae-4190-a5ee-4bfcf686bfbc
 The functionality, is explained in each element's tooltip.
 To show the widget, click on the plugin's icon in the plugins toolbar or under `Plugins > LayerSlider > Layer Slider - widget`.
 
-![Layer Slider dock widget - functionality overview](docs/functionality-overview_v1_1_0.png)
+![Layer Slider dock widget - functionality overview](docs/functionality_overview_v1_1_0.png)
 
 Note that the individual layers must be inside a group in the QGIS layer tree.
 This plugin provides an improved UI for interacting with these data, not the data themselves.
