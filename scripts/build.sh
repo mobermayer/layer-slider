@@ -21,6 +21,7 @@ rsync -amR \
       __init__.py \
       README.md \
       LICENSE \
+      CHANGELOG.md \
       CITATION.cff \
       assets \
       "${BUILD_DIR}/${PACKAGE_NAME}/"
