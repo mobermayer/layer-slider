@@ -1,4 +1,4 @@
-# WIP
+# v1.1.0 (2026-04-01)
 - Improve composed layers removal: remove automatically only when origin group is interacted with
 - Improve slider UI
 - Uncheck "lock" and "compose" when switching project and group
@@ -7,4 +7,4 @@
 - Fix slider index error
 
 # v1.0.0 (2026-03-31)
-Initial Release
+- Initial Release

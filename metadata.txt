@@ -6,7 +6,7 @@
 name=Layer Slider
 qgisMinimumVersion=3.0
 description=Navigate and compose ordered layers with a slider, keyboard shortcuts, and dynamic raster compositing.
-version=1.0.0
+version=1.1.0
 author=Maximilian Obermayer
 email=software@mobermayer.at
 
@@ -17,7 +17,7 @@ about=Layer Slider is a QGIS plugin for navigating and composing ordered layers 
     For a demo, instructions and comparison to alternatives, see the homepage.
 
     If you use Layer Slider in your academic work, please cite it:
-    Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.19341476 . Available at: https://github.com/mobermayer/layer-slider
+    Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.1.0). Zenodo. https://doi.org/10.5281/zenodo.19370739 . Available at: https://github.com/mobermayer/layer-slider
 
     For collaboration and research- or software-related inquiries, visit my homepage https://mobermayer.at .
 
@@ -30,7 +30,16 @@ repository=https://github.com/mobermayer/layer-slider
 license=GNU General Public License v3 (or later)
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-# changelog=
+changelog=v1.1.0 (2026-04-01)
+    - Improve composed layers removal: remove automatically only when origin group is interacted with
+    - Improve slider UI
+    - Uncheck "lock" and "compose" when switching project and group
+    - Improve composed layer/group name
+    - Fix corrupt TIFs when moving slider during pre-calculation
+    - Fix slider index error
+
+    v1.0.0 (2026-03-31)
+    - Initial Release
 
 # Tags are comma separated with spaces allowed
 tags=layer,raster,slider,compositing,navigation,archaeology,gpr,ground penetrating radar,remote sensing,time series,depth slices

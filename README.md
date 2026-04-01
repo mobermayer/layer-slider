@@ -81,7 +81,7 @@ GPR Depth Composer included in ArchaeoAnalyst is an ArcGIS toolset that can comp
 
 If you use Layer Slider in your academic work, please cite it (or whichever version you use):
 
-> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.19341476 . Available at https://github.com/mobermayer/layer-slider
+> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.1.0). Zenodo. https://doi.org/10.5281/zenodo.19370739 . Available at https://github.com/mobermayer/layer-slider
 
 A machine-readable [`CITATION.cff`](CITATION.cff) file is included in this repository and will be picked up automatically by GitHub and Zenodo.
 
@@ -146,12 +146,15 @@ Use this checklist so the plugin version, citations, and published artifacts sta
 
 - Bump `version=` in [`metadata.txt`](metadata.txt) (this value drives `./scripts/build.sh` and the QGIS Plugin Manager)
 - Update [`CHANGELOG.md`](CHANGELOG.md) with version and contents
-- Update `changelog=` line in [`metadata.txt`](metadata.txt) for QGIS plugin repository
+- Update `changelog=` line in [`metadata.txt`](metadata.txt) for QGIS plugin repository (copy from CHANGELOG but remove leading `#`)
 
 #### 2. Zenodo DOI and citations
 
 Zenodo distinguishes a *concept DOI* (stable across all releases; good for README badges) from a version-specific DOI*.
+
 Create a new version on Zenodo as a draft and copy its **version-specific DOI** (do not release it yet).
+Set the publication date and the version.
+
 Update these places so the **version string**, **year**, and **DOIs** match what Zenodo and GitHub show:
 
 - [`metadata.txt`](metadata.txt): `version=`, and the citation sentence inside the `about=` block (version, year, DOI URL)
@@ -166,18 +169,21 @@ Update these places so the **version string**, **year**, and **DOIs** match what
 
 Confirm the ZIP under `release/layer_slider-<version>/` installs and runs in QGIS before you publish it.
 
-#### 4. Publish
+#### 4. Commit and push
+Commit the release and push it to GitHub.
 
-##### 4.1. GitHub release and tag
+#### 5. Publish
+
+##### 5.1. GitHub release and tag
 
 - Commit all version and citation changes on `main` (or release branch)
 - create a **Release** from with a new tag, add release notes, and attach the built `layer_slider-<version>.zip` and `layer_slider-<version>.zip.md5`
 
-##### 4.2. Zenodo
+##### 5.2. Zenodo
 
 - Manually upload the same `layer_slider-<version>.zip` and `layer_slider-<version>.zip.md5` to the draft and publish the record
 
-##### 4.3. QGIS plugin repository
+##### 5.3. QGIS plugin repository
 
 - Upload the same `layer_slider-<version>.zip` to the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/)
 
