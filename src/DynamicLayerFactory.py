@@ -1,5 +1,5 @@
 from typing import List, Optional
-from qgis.core import Qgis, QgsCoordinateTransformContext, QgsRasterLayer
+from qgis.core import Qgis, QgsCoordinateTransformContext, QgsLayerTreeGroup, QgsRasterLayer
 from qgis.analysis import QgsRasterCalculator, QgsRasterCalculatorEntry
 from osgeo import gdal
 import math
@@ -18,6 +18,8 @@ TMP_DIR = os.path.join(PLUGIN_DIR, ".tmp")
 class DynamicLayerFactory:
     CUSTOM_PROPERTY = "layerslider/dynamic_layer"
     ORIGINAL_ID_PROPERTY = "layerslider/original_id"
+    GROUP_UUID_PROPERTY = "layerslider/group_uuid"
+    ORIGIN_GROUP_UUID_PROPERTY = "layerslider/origin_group_uuid"
     CACHE_KEY_VERSION = 5
     _INT_OUTPUT_TYPES = {
         gdal.GDT_Byte,
@@ -77,6 +79,52 @@ class DynamicLayerFactory:
         if not layer.isValid():
             raise RuntimeError(f"Failed to create dynamic layer from {cached_path}")
         return layer
+
+    @staticmethod
+    def ensure_layer_slider_group_uuid(group: QgsLayerTreeGroup) -> str:
+        try:
+            existing = group.customProperty(DynamicLayerFactory.GROUP_UUID_PROPERTY, "") or ""
+            if isinstance(existing, str) and existing.strip():
+                return existing.strip()
+        except Exception:
+            pass
+        u = uuid.uuid4().hex
+        try:
+            group.setCustomProperty(DynamicLayerFactory.GROUP_UUID_PROPERTY, u)
+        except Exception:
+            pass
+        return u
+
+    @staticmethod
+    def layer_slider_group_uuid(group: QgsLayerTreeGroup) -> str:
+        try:
+            u = group.customProperty(DynamicLayerFactory.GROUP_UUID_PROPERTY, "") or ""
+            return str(u).strip()
+        except Exception:
+            return ""
+
+    @staticmethod
+    def find_group_by_layer_slider_uuid(
+        root: QgsLayerTreeGroup,
+        uuid_str: str | None,
+    ) -> Optional[QgsLayerTreeGroup]:
+        if not uuid_str or not str(uuid_str).strip():
+            return None
+        key = str(uuid_str).strip()
+        try:
+            for child in root.children():
+                if isinstance(child, QgsLayerTreeGroup):
+                    try:
+                        if (child.customProperty(DynamicLayerFactory.GROUP_UUID_PROPERTY, "") or "") == key:
+                            return child
+                    except Exception:
+                        pass
+                    found = DynamicLayerFactory.find_group_by_layer_slider_uuid(child, key)
+                    if found is not None:
+                        return found
+        except Exception:
+            pass
+        return None
 
     @staticmethod
     def compute_or_get_cached_path(

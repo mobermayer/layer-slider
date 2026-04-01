@@ -28,6 +28,7 @@ import os
 from .PlusSpinBox import PlusSpinBox
 from .GlobalSettings import GlobalSettings
 from .ComposeManager import ComposeManager
+from .DynamicLayerFactory import DynamicLayerFactory
 from .DynamicLayerExporter import DynamicLayerExporter
 from . import LayerRangeMapper
 from .SettingsDialog import SettingsDialog
@@ -138,6 +139,9 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         self._init_lockgroups_button()
         self.settings_dialog = SettingsDialog(self)
         self.settings_dialog.settings_changed.connect(self.on_compose_settings_changed)
+        self.settings_dialog.remove_all_composed_layers_requested.connect(
+            self._on_remove_all_composed_layers_from_settings
+        )
 
         # UI signals
         self.slider.valueChanged.connect(self.on_slider_changed)
@@ -165,9 +169,6 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         QgsProject.instance().aboutToBeCleared.connect(self._on_project_about_to_clear)
         QgsProject.instance().readProject.connect(self._on_project_read)
         self.exporter.connect_tree_context_menu()
-
-        self.compose.remove_stale_dynamic_layers()
-        QgsProject.instance().readProject.connect(self.compose.remove_stale_dynamic_layers)
 
         QTimer.singleShot(200, self._initial_populate_and_bind)
 
@@ -248,7 +249,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         except Exception:
             pass
 
-        self.compose.remove_dynamic_node()
+        self.compose.detach_dynamic_node()
         self.compose.remove_stale_dynamic_layers()
         try:
             if self.settings_dialog:
@@ -294,7 +295,9 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         except Exception:
             pass
         self.compose.invalidate_single_compose_request(cancel_task=False)
-        self.compose.remove_dynamic_node()
+        self.compose.detach_dynamic_node()
+        self.compose.remove_canonical_dynamics_with_missing_origin()
+        self.compose.rebuild_dynamic_nodes_from_project()
         try:
             self.chk_lockgroups.blockSignals(True)
             self.chk_avgrasters.blockSignals(True)
@@ -356,6 +359,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
     def _initial_populate_and_bind(self):
         if self._unloaded:
             return
+        self.compose.remove_canonical_dynamics_with_missing_origin()
         self.populate_group_list()
 
         lt_view = self.iface.layerTreeView()
@@ -706,8 +710,20 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if isinstance(node, QgsLayerTreeGroup):
             group = node
         elif isinstance(node, QgsLayerTreeLayer):
-            parent = node.parent()
-            group = parent if isinstance(parent, QgsLayerTreeGroup) else root
+            group = None
+            try:
+                lyr = node.layer()
+                if lyr is not None and lyr.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+                    ouuid = lyr.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
+                    if str(ouuid).strip():
+                        og = DynamicLayerFactory.find_group_by_layer_slider_uuid(root, ouuid)
+                        if og is not None and self._node_belongs_to_root(og):
+                            group = og
+            except Exception:
+                group = None
+            if group is None:
+                parent = node.parent()
+                group = parent if isinstance(parent, QgsLayerTreeGroup) else root
         else:
             group = root
 
@@ -726,9 +742,21 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
     # ------------------------------------------------------------------
     # External visibility changes from tree
     # ------------------------------------------------------------------
+    def _maybe_remove_dynamic_for_manual_tree_visibility(self, node: QgsLayerTreeNode | None):
+        if node is None:
+            return
+        try:
+            if self.compose.remove_dynamics_for_manual_visibility_on_node(node):
+                self.compose.invalidate_single_compose_request(cancel_task=False)
+                self._update_label_only(self.slider.value())
+                self.update_btn_reset_text()
+        except Exception:
+            pass
+
     def on_tree_visibility_changed(self, node):
         if self.update_lock > 0:
             return
+        self._maybe_remove_dynamic_for_manual_tree_visibility(node)
         if not isinstance(node, QgsLayerTreeLayer):
             return
         if not self.current_group_node:
@@ -827,6 +855,8 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                 self.slider.blockSignals(False)
             self._update_label_only(self.slider.value())
 
+        self.compose.remove_canonical_dynamics_with_missing_origin()
+
     # ------------------------------------------------------------------
     # Combo changed -> load group layers
     # ------------------------------------------------------------------
@@ -853,7 +883,6 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
             self.chk_avgrasters.setChecked(False)
             self.chk_avgrasters.blockSignals(False)
             self.compose.invalidate_single_compose_request(cancel_task=False)
-            self.compose.remove_dynamic_node()
 
         if group != self.current_group_node:
             self.compose.invalidate_single_compose_request(cancel_task=False)
@@ -877,7 +906,6 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                 self.chk_avgrasters.setChecked(False)
                 self.chk_avgrasters.blockSignals(False)
                 self.compose.invalidate_single_compose_request(cancel_task=False)
-                self.compose.remove_dynamic_node()
                 self.group_layers = norm_children
             else:
                 self.group_layers = av_children
@@ -968,10 +996,37 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if value:
             self.set_item_visible(item.parent(), value)
 
+    def _should_remove_tracked_dynamic_before_visibility_apply(self) -> bool:
+        if not self.compose.dynamic_node_defined():
+            return False
+        try:
+            node = self.compose.dynamic_node
+            if not hasattr(node, "layer") or node.layer() is None:
+                return True
+            layer = node.layer()
+            if not isinstance(layer, QgsRasterLayer):
+                return True
+            if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+                return True
+            orig = layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None)
+            if layer.id() != orig:
+                return False
+            root = getattr(self, "_root_group", QgsProject.instance().layerTreeRoot())
+            ouuid = layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
+            if not str(ouuid).strip():
+                return True
+            og = DynamicLayerFactory.find_group_by_layer_slider_uuid(root, ouuid)
+            if og is None:
+                return True
+            return og == self.current_group_node
+        except Exception:
+            return True
+
     def apply_visibility_from_index(self, idx: int):
         idx = self.limit_slider_index(idx)
 
-        self.compose.remove_dynamic_node()
+        if self._should_remove_tracked_dynamic_before_visibility_apply():
+            self.compose.remove_dynamic_node()
         if not self.group_layers:
             return
 
@@ -1063,7 +1118,8 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
 
     def set_visibility_group_layers(self, visible: bool):
         self.compose.invalidate_single_compose_request(cancel_task=False)
-        self.compose.remove_dynamic_node()
+        if self._should_remove_tracked_dynamic_before_visibility_apply():
+            self.compose.remove_dynamic_node()
 
         if not self.group_layers:
             return
@@ -1155,6 +1211,18 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
             return False
         return any(layer.itemVisibilityChecked() for layer in self.group_layers)
 
+    def _on_remove_all_composed_layers_from_settings(self):
+        if self._unloaded:
+            return
+        self.compose.remove_all_canonical_dynamic_layers()
+        try:
+            self.iface.mapCanvas().refresh()
+        except Exception:
+            pass
+        self.compose.update_precalc_button_state()
+        self.update_btn_reset_text()
+        self._update_label_only(self.slider.value())
+
     # ------------------------------------------------------------------
     # Show / hide / close events
     # ------------------------------------------------------------------
@@ -1173,7 +1241,8 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
     def closeEvent(self, event: QCloseEvent | None):
         self.visible_changed.emit(False)
         self.compose.cancel_background_tasks()
-        self.compose.remove_dynamic_node()
+        self.compose.detach_dynamic_node()
+        self.compose.remove_stale_dynamic_layers()
         if event:
             event.accept()
 
@@ -1182,7 +1251,8 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if not is_spontaneous:
             self.visible_changed.emit(False)
             self.compose.cancel_background_tasks()
-            self.compose.remove_dynamic_node()
+            self.compose.detach_dynamic_node()
+            self.compose.remove_stale_dynamic_layers()
         event.accept()
 
     # ------------------------------------------------------------------

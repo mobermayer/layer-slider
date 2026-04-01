@@ -8,6 +8,7 @@ from qgis.PyQt.QtWidgets import (
     QDialogButtonBox,
     QFileDialog,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QRadioButton,
     QSpinBox,
@@ -24,6 +25,7 @@ FORM_CLASS, _ = uic.loadUiType(
 
 class SettingsDialog(QDialog, FORM_CLASS):
     settings_changed = pyqtSignal()
+    remove_all_composed_layers_requested = pyqtSignal()
 
     radio_dynamic: QRadioButton
     spin_dynamic_n: QSpinBox
@@ -34,6 +36,7 @@ class SettingsDialog(QDialog, FORM_CLASS):
     btn_select_cache_dir: QPushButton
     btn_open_cache_dir: QPushButton
     spin_cache_mb: QSpinBox
+    btn_remove_all_composed_layers: QPushButton
     button_box: QDialogButtonBox
 
     def __init__(self, parent=None):
@@ -56,6 +59,7 @@ class SettingsDialog(QDialog, FORM_CLASS):
         self.btn_open_cache_dir.clicked.connect(self._on_open_cache_dir_clicked)
         self.button_box.accepted.connect(self._on_save_clicked)
         self.button_box.rejected.connect(self._on_cancel_clicked)
+        self.btn_remove_all_composed_layers.clicked.connect(self._on_remove_all_composed_layers_clicked)
 
         self.refresh_from_settings()
 
@@ -153,3 +157,15 @@ class SettingsDialog(QDialog, FORM_CLASS):
     def _on_cancel_clicked(self):
         self.refresh_from_settings()
         self.hide()
+
+    def _on_remove_all_composed_layers_clicked(self):
+        reply = QMessageBox.question(
+            self,
+            "Remove composed layers",
+            "Remove all plugin-managed composed raster layers from the project?\n\n"
+            "Layers duplicated in the legend (copies) are not removed.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply == QMessageBox.Yes:
+            self.remove_all_composed_layers_requested.emit()

@@ -169,7 +169,42 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="0" colspan="2">
+   <item row="4" column="0">
+    <widget class="QLabel" name="label_remove_composed">
+     <property name="text">
+      <string>Composed layers</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QWidget" name="remove_composed_widget" native="true">
+     <layout class="QVBoxLayout" name="remove_composed_layout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QPushButton" name="btn_remove_all_composed_layers">
+        <property name="text">
+         <string>Remove all from project…</string>
+        </property>
+        <property name="toolTip">
+         <string>Remove plugin-managed composed raster layers. Duplicated layers (copies) are not removed.</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="5" column="0" colspan="2">
     <widget class="QDialogButtonBox" name="button_box">
      <property name="standardButtons">
       <set>QDialogButtonBox::Save|QDialogButtonBox::Cancel</set>

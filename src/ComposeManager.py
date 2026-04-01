@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 import os
 import re
 import shutil
@@ -30,7 +30,7 @@ LAYER_SUFFIX_NUMBER_RE = re.compile(
 class ComposeManager:
     def __init__(self, dock):
         self.dock = dock
-        self.dynamic_node = None
+        self._dynamic_nodes: Dict[str, QgsLayerTreeLayer] = {}
         self._compose_request_token = 0
         self._active_single_compose_task: Optional[QgsTask] = None
         self._active_single_compose_request: Optional[dict] = None
@@ -58,45 +58,206 @@ class ComposeManager:
         return False
 
     # ------------------------------------------------------------------
-    # Dynamic node lifecycle
+    # Dynamic node lifecycle (one composed tree node per origin group UUID)
     # ------------------------------------------------------------------
-    def dynamic_node_defined(self) -> bool:
-        try:
-            if self.dynamic_node is None:
-                return False
-            self.dynamic_node.name()
-            return True
-        except Exception:
-            return False
+    def _current_group_origin_uuid(self) -> Optional[str]:
+        g = self.dock.current_group_node
+        if not isinstance(g, QgsLayerTreeGroup):
+            return None
+        u = DynamicLayerFactory.layer_slider_group_uuid(g)
+        return u if u else None
 
-    def remove_dynamic_node(self):
-        if not self.dynamic_node_defined():
-            return
-        self.dock.update_lock += 1
-        try:
-            layer_id = None
-            if hasattr(self.dynamic_node, "layer") and self.dynamic_node.layer() is not None:
-                layer_id = self.dynamic_node.layer().id()
-            if layer_id:
+    def _find_and_cache_dynamic_tree_node(self, origin_uuid: str) -> Optional[QgsLayerTreeLayer]:
+        key = str(origin_uuid).strip()
+        if not key:
+            return None
+        project = QgsProject.instance()
+        root = project.layerTreeRoot()
+        for layer in project.mapLayers().values():
+            try:
+                if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+                    continue
+                if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
+                    continue
+                ou = layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
+                if str(ou).strip() != key:
+                    continue
+                tnode = root.findLayer(layer.id())
+                if isinstance(tnode, QgsLayerTreeLayer):
+                    self._dynamic_nodes[key] = tnode
+                    return tnode
+            except Exception:
+                continue
+        return None
+
+    @property
+    def dynamic_node(self) -> Optional[QgsLayerTreeLayer]:
+        uid = self._current_group_origin_uuid()
+        if not uid:
+            return None
+        node = self._dynamic_nodes.get(uid)
+        if node is not None:
+            try:
+                node.name()
+                if node.layer() is not None:
+                    return node
+            except Exception:
+                pass
+            self._dynamic_nodes.pop(uid, None)
+        return self._find_and_cache_dynamic_tree_node(uid)
+
+    def rebuild_dynamic_nodes_from_project(self):
+        self._dynamic_nodes.clear()
+        project = QgsProject.instance()
+        root = project.layerTreeRoot()
+        for layer in project.mapLayers().values():
+            try:
+                if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+                    continue
+                if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
+                    continue
+                ou = layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
+                ou = str(ou).strip()
+                if not ou:
+                    continue
+                tnode = root.findLayer(layer.id())
+                if isinstance(tnode, QgsLayerTreeLayer):
+                    self._dynamic_nodes[ou] = tnode
+            except Exception:
+                pass
+
+    def dynamic_node_defined(self) -> bool:
+        return self.dynamic_node is not None
+
+    def _remove_dynamic_node_for_origin_uuid_impl(self, origin_uuid: str) -> bool:
+        key = str(origin_uuid).strip()
+        if not key:
+            return False
+        removed = False
+        node = self._dynamic_nodes.pop(key, None)
+        layer_id = None
+        if node is not None:
+            try:
+                if hasattr(node, "layer") and node.layer() is not None:
+                    layer_id = node.layer().id()
+            except Exception:
+                pass
+        if layer_id is None:
+            for layer in QgsProject.instance().mapLayers().values():
                 try:
-                    QgsProject.instance().removeMapLayer(layer_id)
+                    if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+                        continue
+                    if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
+                        continue
+                    ou = layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
+                    if str(ou).strip() != key:
+                        continue
+                    layer_id = layer.id()
+                    break
                 except Exception:
-                    try:
-                        parent = self.dynamic_node.parent()
-                        if parent:
-                            parent.removeChildNode(self.dynamic_node)
-                    except Exception:
-                        pass
-            else:
+                    continue
+        if layer_id:
+            try:
+                QgsProject.instance().removeMapLayer(layer_id)
+                removed = True
+            except Exception:
                 try:
-                    parent = self.dynamic_node.parent()
-                    if parent:
-                        parent.removeChildNode(self.dynamic_node)
+                    if node is not None:
+                        parent = node.parent()
+                        if parent:
+                            parent.removeChildNode(node)
+                            removed = True
                 except Exception:
                     pass
+        return removed
+
+    def remove_dynamic_node_for_origin_uuid(self, origin_uuid: Optional[str]) -> bool:
+        if not origin_uuid or not str(origin_uuid).strip():
+            return False
+        self.dock.update_lock += 1
+        try:
+            return self._remove_dynamic_node_for_origin_uuid_impl(str(origin_uuid).strip())
         finally:
-            self.dynamic_node = None
             self.dock.update_lock -= 1
+
+    def remove_dynamic_node(self):
+        uid = self._current_group_origin_uuid()
+        if uid:
+            self.remove_dynamic_node_for_origin_uuid(uid)
+
+    def _origin_has_canonical_dynamic_layer(self, origin_uuid: str) -> bool:
+        key = str(origin_uuid).strip()
+        if not key:
+            return False
+        if key in self._dynamic_nodes:
+            return True
+        for layer in QgsProject.instance().mapLayers().values():
+            try:
+                if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+                    continue
+                if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
+                    continue
+                ou = layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
+                if str(ou).strip() == key:
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def remove_dynamics_for_manual_visibility_on_node(self, node) -> bool:
+        """Remove composed output for the innermost ancestor group (of node) that has one."""
+        if node is None:
+            return False
+        n = node if isinstance(node, QgsLayerTreeGroup) else node.parent()
+        self.dock.update_lock += 1
+        try:
+            while n is not None:
+                if isinstance(n, QgsLayerTreeGroup):
+                    u = DynamicLayerFactory.layer_slider_group_uuid(n)
+                    if u and self._origin_has_canonical_dynamic_layer(u):
+                        return self._remove_dynamic_node_for_origin_uuid_impl(u)
+                n = n.parent()
+            return False
+        finally:
+            self.dock.update_lock -= 1
+
+    def detach_dynamic_node(self):
+        self._dynamic_nodes.clear()
+
+    def remove_canonical_dynamics_with_missing_origin(self):
+        project = QgsProject.instance()
+        root = project.layerTreeRoot()
+        layers_to_remove = []
+        for layer in project.mapLayers().values():
+            try:
+                if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+                    continue
+                original_id = layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None)
+                if layer.id() != original_id:
+                    continue
+                ouuid = layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
+                if not str(ouuid).strip():
+                    layers_to_remove.append(layer)
+                    continue
+                if DynamicLayerFactory.find_group_by_layer_slider_uuid(root, ouuid) is None:
+                    layers_to_remove.append(layer)
+            except Exception:
+                continue
+
+        remove_ids = {lyr.id() for lyr in layers_to_remove}
+        for uid, nd in list(self._dynamic_nodes.items()):
+            try:
+                lyr = nd.layer()
+                if lyr is not None and lyr.id() in remove_ids:
+                    self._dynamic_nodes.pop(uid, None)
+            except Exception:
+                self._dynamic_nodes.pop(uid, None)
+
+        for layer in layers_to_remove:
+            try:
+                project.removeMapLayer(layer.id())
+            except Exception:
+                pass
 
     def remove_stale_dynamic_layers(self):
         project = QgsProject.instance()
@@ -109,12 +270,27 @@ class ComposeManager:
         for layer in layers_to_remove:
             project.removeMapLayer(layer.id())
 
+    def remove_all_canonical_dynamic_layers(self):
+        """Remove every canonical plugin dynamic layer (duplicates preserved)."""
+        self.detach_dynamic_node()
+        self.remove_stale_dynamic_layers()
+
     def _insert_dynamic_layer_from_cached_path(self, cached_path: str, name: str, num_layers: int):
         dynamic_layer = DynamicLayerFactory.layer_from_cached_path(cached_path, name)
         self._insert_dynamic_layer(dynamic_layer, num_layers)
 
     def _insert_dynamic_layer(self, dynamic_layer: QgsRasterLayer, num_layers: int):
-        self.remove_dynamic_node()
+        origin_uid = None
+        if isinstance(self.dock.current_group_node, QgsLayerTreeGroup):
+            try:
+                origin_uid = DynamicLayerFactory.ensure_layer_slider_group_uuid(self.dock.current_group_node)
+                dynamic_layer.setCustomProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, origin_uid)
+            except Exception:
+                pass
+        if origin_uid:
+            self.remove_dynamic_node_for_origin_uuid(origin_uid)
+        else:
+            self.remove_dynamic_node()
 
         contrast_filter = QgsBrightnessContrastFilter()
         contrast_filter.setContrast(self._compute_compose_contrast(num_layers))
@@ -150,7 +326,8 @@ class ComposeManager:
             node_to_insert.setItemVisibilityChecked(True)
             self.dock.iface.layerTreeView().refreshLayerSymbology(dynamic_layer.id())
             self.dock.iface.mapCanvas().refresh()
-            self.dynamic_node = node_to_insert
+            if origin_uid:
+                self._dynamic_nodes[origin_uid] = node_to_insert
         finally:
             self.dock.update_lock -= 1
 
