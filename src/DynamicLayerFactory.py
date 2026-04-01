@@ -7,7 +7,9 @@ import os
 import shutil
 import pickle
 import hashlib
+import threading
 import time
+import uuid
 from .GlobalSettings import GlobalSettings
 
 PLUGIN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -16,7 +18,7 @@ TMP_DIR = os.path.join(PLUGIN_DIR, ".tmp")
 class DynamicLayerFactory:
     CUSTOM_PROPERTY = "layerslider/dynamic_layer"
     ORIGINAL_ID_PROPERTY = "layerslider/original_id"
-    CACHE_KEY_VERSION = 4
+    CACHE_KEY_VERSION = 5
     _INT_OUTPUT_TYPES = {
         gdal.GDT_Byte,
         gdal.GDT_UInt16,
@@ -30,6 +32,18 @@ class DynamicLayerFactory:
         gdal.GDT_Float32,
         gdal.GDT_Float64,
     }
+
+    _per_key_locks_guard = threading.Lock()
+    _per_key_locks: dict[str, threading.Lock] = {}
+
+    @staticmethod
+    def _lock_for_cache_key(key: str) -> threading.Lock:
+        with DynamicLayerFactory._per_key_locks_guard:
+            lock = DynamicLayerFactory._per_key_locks.get(key)
+            if lock is None:
+                lock = threading.Lock()
+                DynamicLayerFactory._per_key_locks[key] = lock
+            return lock
 
     @staticmethod
     def create(raster_layers: List[QgsRasterLayer], name="Layer Slider (dynamic)", operation: str = "min"):
@@ -84,37 +98,46 @@ class DynamicLayerFactory:
         if os.path.exists(cached_path):
             return cached_path
 
-        # Compute one grayscale value per layer and then compose all layers.
-        gray_path = None
-        alpha_path = None
-        tmp_path = None
-        try:
-            gray_path = DynamicLayerFactory._compute_grayscale(raster_layers, key, operation)
-            # compute alpha as max over all input layers (so it has the same size as necessary (hopefully))
-            alpha_path = DynamicLayerFactory._compute_alpha_max(raster_layers, key)
-            # combine grayscale and alpha in final temp GTiff
-            tmp_path = DynamicLayerFactory._combine_gray_alpha(
-                gray_path,
-                alpha_path,
-                key,
-                raster_layers[0].width(),
-                raster_layers[0].height(),
-                raster_layers,
-                datatype,
-            )
-
-            os.makedirs(cache_dir, exist_ok=True)
-            os.replace(tmp_path, cached_path)
-            tmp_path = None
-            return cached_path
-        finally:
-            for path in (gray_path, alpha_path, tmp_path):
-                if not path:
-                    continue
+        lock = DynamicLayerFactory._lock_for_cache_key(key)
+        with lock:
+            if os.path.exists(cached_path):
                 try:
-                    os.remove(path)
-                except FileNotFoundError:
+                    os.utime(cached_path, None)
+                except Exception:
                     pass
+                return cached_path
+
+            run_token = uuid.uuid4().hex
+            work_tag = f"{key}_{run_token}"
+            gray_path = None
+            alpha_path = None
+            staging_path = os.path.join(TMP_DIR, f".staging_{work_tag}.tif")
+            try:
+                os.makedirs(TMP_DIR, exist_ok=True)
+                gray_path = DynamicLayerFactory._compute_grayscale(raster_layers, work_tag, operation)
+                alpha_path = DynamicLayerFactory._compute_alpha_max(raster_layers, work_tag)
+                DynamicLayerFactory._combine_gray_alpha(
+                    gray_path,
+                    alpha_path,
+                    staging_path,
+                    raster_layers[0].width(),
+                    raster_layers[0].height(),
+                    raster_layers,
+                    datatype,
+                )
+
+                os.makedirs(cache_dir, exist_ok=True)
+                os.replace(staging_path, cached_path)
+                staging_path = None
+                return cached_path
+            finally:
+                for path in (gray_path, alpha_path, staging_path):
+                    if not path:
+                        continue
+                    try:
+                        os.remove(path)
+                    except FileNotFoundError:
+                        pass
 
     @staticmethod
     def _compose_expression(expr_parts: List[str], operation: str) -> str:
@@ -151,9 +174,9 @@ class DynamicLayerFactory:
         return DynamicLayerFactory.binary_unbalanced_expression(expr_parts, "min")
 
     @staticmethod
-    def _compute_grayscale(raster_layers: List[QgsRasterLayer], key: str, operation: str) -> str:
+    def _compute_grayscale(raster_layers: List[QgsRasterLayer], work_tag: str, operation: str) -> str:
         os.makedirs(TMP_DIR, exist_ok=True)
-        tmp_path = os.path.join(TMP_DIR, f"{key}_gray.tif")
+        tmp_path = os.path.join(TMP_DIR, f"{work_tag}_gray.tif")
         layer_exprs = []
         entries = []
 
@@ -199,9 +222,9 @@ class DynamicLayerFactory:
         return tmp_path
 
     @staticmethod
-    def _compute_alpha_max(raster_layers: List[QgsRasterLayer], key: str) -> Optional[str]:
+    def _compute_alpha_max(raster_layers: List[QgsRasterLayer], work_tag: str) -> Optional[str]:
         os.makedirs(TMP_DIR, exist_ok=True)
-        tmp_path = os.path.join(TMP_DIR, f"{key}_alpha.tif")
+        tmp_path = os.path.join(TMP_DIR, f"{work_tag}_alpha.tif")
         extent = raster_layers[0].extent()
         crs = raster_layers[0].crs()
         width = raster_layers[0].width()
@@ -423,14 +446,13 @@ class DynamicLayerFactory:
     def _combine_gray_alpha(
         gray_path: str,
         alpha_path: Optional[str],
-        key: str,
+        output_path: str,
         width: int,
         height: int,
         raster_layers: List[QgsRasterLayer],
         output_datatype: str,
-    ):
-        os.makedirs(TMP_DIR, exist_ok=True)
-        tmp_path = os.path.join(TMP_DIR, f"{key}_merged.tif")
+    ) -> str:
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
         ds_gray = gdal.Open(gray_path)
         non_alpha_bands = [
@@ -486,7 +508,7 @@ class DynamicLayerFactory:
 
         driver = gdal.GetDriverByName("GTiff")
         ds = driver.Create(
-            tmp_path, width, height, num_channels, datatype,
+            output_path, width, height, num_channels, datatype,
             # options=[ # 1.6s; 15.9MB
             #     "COMPRESS=PACKBITS",
             #     "TILED=YES",
@@ -534,7 +556,7 @@ class DynamicLayerFactory:
 
         ds.FlushCache()
         ds = None
-        return tmp_path
+        return output_path
 
     @staticmethod
     def _raster_fs_key(layer: QgsRasterLayer):
