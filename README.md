@@ -30,6 +30,14 @@ https://github.com/user-attachments/assets/1ee1a25f-c6ae-4190-a5ee-4bfcf686bfbc
 - **Environmental monitoring:** Cycle through pollution concentration grids, flood extent snapshots, or ecological survey layers.
 - **Urban change detection:** Review before/after layers for construction, demolition, or infrastructure projects.
 
+## Citing Layer Slider
+
+If you use Layer Slider in your academic work, please cite it (or whichever version you use):
+
+> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.1.0). Zenodo. https://doi.org/10.5281/zenodo.19370739 . Available at https://github.com/mobermayer/layer-slider
+
+A machine-readable [`CITATION.cff`](CITATION.cff) file is included in this repository and will be picked up automatically by GitHub and Zenodo.
+
 ## Usage
 The functionality, is explained in each element's tooltip.
 To show the widget, click on the plugin's icon in the plugins toolbar or under `Plugins > LayerSlider > Layer Slider - widget`.
@@ -76,14 +84,6 @@ All shortcuts can be customized (and unbound ones assigned) in `Settings > Keybo
 ### GPR Depth Composer (ArcGIS)
 
 GPR Depth Composer included in ArchaeoAnalyst is an ArcGIS toolset that can compute combined depth slices of varying thickness (see [Trinks et al. 2018, p. 20](https://onlinelibrary.wiley.com/doi/10.1002/arp.1599) for a short description). Layer Slider offers comparable compositing functionality, but runs inside QGIS (free & open-source) and works with arbitrary layer types (e. g. GeoTIFF rasters).
-
-## Citing Layer Slider
-
-If you use Layer Slider in your academic work, please cite it (or whichever version you use):
-
-> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.1.0). Zenodo. https://doi.org/10.5281/zenodo.19370739 . Available at https://github.com/mobermayer/layer-slider
-
-A machine-readable [`CITATION.cff`](CITATION.cff) file is included in this repository and will be picked up automatically by GitHub and Zenodo.
 
 ## Installation
 
