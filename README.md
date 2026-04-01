@@ -121,7 +121,7 @@ ln -s "$(pwd)/layer-slider" ~/.local/share/QGIS/QGIS3/profiles/default/python/pl
 # Restart QGIS, then enable the plugin in the Plugin Manager
 ```
 
-### Building a release ZIP
+### Build
 
 ```bash
 ./scripts/build.sh
@@ -129,6 +129,47 @@ ln -s "$(pwd)/layer-slider" ~/.local/share/QGIS/QGIS3/profiles/default/python/pl
 ```
 
 The version number is read from `metadata.txt`.
+
+## Releasing a new version
+
+Use this checklist so the plugin version, citations, and published artifacts stay in sync.
+
+### 1. Version and changelog
+
+- Bump `version=` in [`metadata.txt`](metadata.txt) (this value drives `./scripts/build.sh` and the QGIS Plugin Manager)
+- Update [`CHANGELOG.md`](CHANGELOG.md) with version and contents
+- Update `changelog=` line in [`metadata.txt`](metadata.txt) for QGIS plugin repository
+
+### 2. Zenodo DOI and citations
+
+Zenodo distinguishes a *concept DOI* (stable across all releases; good for README badges) from a version-specific DOI*.
+Create a new version on Zenodo as a draft and copy its **version-specific DOI** (do not release it yet).
+Update these places so the **version string**, **year**, and **DOIs** match what Zenodo and GitHub show:
+
+| Location | What to update |
+|----------|----------------|
+| [`metadata.txt`](metadata.txt) | `version=`, and the citation sentence inside the `about=` block (version, year, DOI URL). |
+| [`README.md`](README.md) | DOI badge URLs in the title and [Citing Layer Slider](#citing-layer-slider), and the example citation block under that section. |
+| [`CITATION.cff`](CITATION.cff) | `version`, `doi`, and `date-released`. |
+
+### 3. Build
+
+```bash
+./scripts/build.sh
+```
+
+Confirm the ZIP under `release/layer_slider-<version>/` installs and runs in QGIS before you publish it.
+
+### 4. Release
+#### 4.1. GitHub release and tag
+- Commit all version and citation changes on `main` (or release branch)
+- create a **Release** from with a new tag, add release notes, and attach the built `layer_slider-<version>.zip` and `layer_slider-<version>.zip.md5`
+
+#### 4.2. Zenodo
+- Manually upload the same `layer_slider-<version>.zip` and `layer_slider-<version>.zip.md5` to the draft and publish the record
+
+#### 4.3. QGIS plugin repository
+- Upload the same `layer_slider-<version>.zip` to the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/)
 
 ## License
 
