@@ -176,6 +176,7 @@ class ComposeManager:
 
     @staticmethod
     def _compose_layer_name(raster_layers: List[QgsRasterLayer], operation: str) -> str:
+        n = len(raster_layers)
         first_name = raster_layers[0].name()
         last_name = raster_layers[-1].name()
         operation_name = GlobalSettings.getComposeOperationShortName(operation).upper()
@@ -194,9 +195,9 @@ class ComposeManager:
                 max_label = str(range_max).zfill(width)
                 if prefix:
                     return f"{prefix}_{operation_name}_{min_label}-{max_label}"
-                return f"{operation_name}_{min_label}-{max_label}"
+                return f"{operation_name}_{n} {min_label}-{max_label}"
 
-        return f"{operation_name} {first_name} – {last_name}"
+        return f"{operation_name}_{n} {first_name} – {last_name}"
 
     @staticmethod
     def sanitize_export_filename(value: str) -> str:
@@ -471,11 +472,12 @@ class ComposeManager:
 
     def _export_group_base_name(self, operation: str) -> str:
         operation_name = GlobalSettings.getComposeOperationShortName(operation).upper()
+        n = self.dock.num_avgrasters.value()
         if isinstance(self.dock.current_group_node, QgsLayerTreeGroup):
             original_group_name = self.dock.current_group_node.name() or "Project Root"
         else:
             original_group_name = "Project Root"
-        return f"{operation_name} {original_group_name}"
+        return f"{operation_name}_{n} {original_group_name}"
 
     def _create_precalc_export_group(self, operation: str) -> QgsLayerTreeGroup:
         parent_group = QgsProject.instance().layerTreeRoot()
