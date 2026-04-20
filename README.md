@@ -138,6 +138,27 @@ ln -s "$(pwd)/layer-slider" ~/.local/share/QGIS/QGIS3/profiles/default/python/pl
 
 The version number is read from `metadata.txt`.
 
+### Lint
+
+`./scripts/lint.sh` runs the same three checks the QGIS plugin repository performs on upload:
+
+- [`flake8`](https://flake8.pycqa.org/) + [`flake8-qgis`](https://github.com/osgeosuomi/flake8-qgis) — code quality and QGIS-specific rules
+- [`bandit`](https://bandit.readthedocs.io/) — security issues
+- [`detect-secrets`](https://github.com/Yelp/detect-secrets) — leaked credentials
+
+```bash
+./scripts/lint.sh                      # run all three
+./scripts/lint.sh flake8 --statistics  # run one tool, forwarding extra args
+./scripts/lint.sh bandit
+./scripts/lint.sh secrets
+```
+
+The script provisions an isolated virtualenv under `.venv-lint/` on first run and reuses it afterwards (no system-wide Python packages are installed).
+It only needs `python3` with the `venv` module — included with the base Python package on Arch, Manjaro, and Fedora; on Debian/Ubuntu you may need `sudo apt install python3-venv`.
+
+Flake8 rules and exclusions are configured in [`.flake8`](.flake8) and match the QGIS plugin repo's check (mostly?).
+Bandit is filtered to medium-and-above severity by default to hide noisy LOW findings (low is ignored in QGIS plugin repo); pass `./scripts/lint.sh bandit --severity-level low` to see everything.
+
 ### Releasing a new version
 
 Use this checklist so the plugin version, citations, and published artifacts stay in sync.
