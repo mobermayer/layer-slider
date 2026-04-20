@@ -20,7 +20,7 @@ class DynamicLayerFactory:
     ORIGINAL_ID_PROPERTY = "layerslider/original_id"
     GROUP_UUID_PROPERTY = "layerslider/group_uuid"
     ORIGIN_GROUP_UUID_PROPERTY = "layerslider/origin_group_uuid"
-    CACHE_KEY_VERSION = 5
+    CACHE_KEY_VERSION = 6
     _INT_OUTPUT_TYPES = {
         gdal.GDT_Byte,
         gdal.GDT_UInt16,
@@ -619,7 +619,7 @@ class DynamicLayerFactory:
     def _cache_key(raster_layers: List[QgsRasterLayer], operation: str, output_datatype: str):
         keys = [DynamicLayerFactory._raster_fs_key(l) for l in raster_layers]
         raw = pickle.dumps((DynamicLayerFactory.CACHE_KEY_VERSION, keys, operation, output_datatype))
-        return hashlib.sha1(raw).hexdigest()
+        return hashlib.sha256(raw).hexdigest()
 
     @staticmethod
     def get_max_cache_bytes() -> int:
