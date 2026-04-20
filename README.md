@@ -34,7 +34,7 @@ https://github.com/user-attachments/assets/1ee1a25f-c6ae-4190-a5ee-4bfcf686bfbc
 
 If you use Layer Slider in your academic work, please cite it (or whichever version you use):
 
-> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.1.0). Zenodo. https://doi.org/10.5281/zenodo.19370739 . Available at https://github.com/mobermayer/layer-slider
+> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.1.1). Zenodo. https://doi.org/10.5281/zenodo.19665151 . Available at https://github.com/mobermayer/layer-slider
 
 A machine-readable [`CITATION.cff`](CITATION.cff) file is included in this repository and will be picked up automatically by GitHub and Zenodo.
 
@@ -159,7 +159,7 @@ It only needs `python3` with the `venv` module — included with the base Python
 Flake8 rules and exclusions are configured in [`.flake8`](.flake8) and match the QGIS plugin repo's check (mostly?).
 Bandit is filtered to medium-and-above severity by default to hide noisy LOW findings (low is ignored in QGIS plugin repo); pass `./scripts/lint.sh bandit --severity-level low` to see everything.
 
-### Releasing a new version
+### Release a new version
 
 Use this checklist so the plugin version, citations, and published artifacts stay in sync.
 
@@ -173,18 +173,25 @@ Use this checklist so the plugin version, citations, and published artifacts sta
 
 Zenodo distinguishes a *concept DOI* (stable across all releases; good for README badges) from a version-specific DOI*.
 
-Create a new version on Zenodo as a draft and copy its **version-specific DOI** (do not release it yet).
-Set the publication date and the version.
+Create a new version on Zenodo and
+
+- set the `Publication date`
+- set the `version` (with `vX.Y.Z`)
+- copy its **version-specific DOI**
+- save as draft and preview (may need to upload dummy file) (do not release it yet)
 
 Update these places so the **version string**, **year**, and **DOIs** match what Zenodo and GitHub show:
 
-- [`metadata.txt`](metadata.txt): `version=`, and the citation sentence inside the `about=` block (version, year, DOI URL)
+- [`metadata.txt`](metadata.txt): citation sentence inside the `about=` block (version, year, DOI URL)
 - [`README.md`](README.md): version, year and DOI URL in [Citing Layer Slider](#citing-layer-slider)
 - [`CITATION.cff`](CITATION.cff): `version`, `doi`, and `date-released`
 
 #### 3. Build
 
 ```bash
+# lint before building
+./scripts/lint.sh
+
 ./scripts/build.sh
 ```
 

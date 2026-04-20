@@ -1,3 +1,6 @@
+# v1.1.1 (2026-04-20)
+- Code cleanup (to avoid false positive security warning)
+
 # v1.1.0 (2026-04-01)
 - Improve composed layers removal: remove automatically only when origin group is interacted with
 - Improve slider UI
