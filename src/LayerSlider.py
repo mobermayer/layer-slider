@@ -27,7 +27,7 @@ import os
 
 PLUGIN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-# The plugin main class -----------------------------------------------------
+
 class LayerSlider:
     iface: QgisInterface
     dock: Optional[LayerSliderDockWidget]
@@ -90,12 +90,13 @@ class LayerSlider:
             self.dock.deleteLater()
             self.dock = None
 
-    def register_shortcut(self, action: QAction, shortcut: str, on_triggered, on_keys_changed = None) -> QAction:
+    def register_shortcut(self, action: QAction, shortcut: str, on_triggered, on_keys_changed=None) -> QAction:
         self.iface.registerMainWindowAction(action, shortcut)
         self.iface.addPluginToMenu("&LayerSlider", action)
         action.triggered.connect(on_triggered)
         QgsGui.shortcutsManager().registerAction(action)
-        if on_keys_changed: action.changed.connect(on_keys_changed)
+        if on_keys_changed:
+            action.changed.connect(on_keys_changed)
         return action
 
     def register_shortcuts(self):
@@ -111,10 +112,12 @@ class LayerSlider:
         self.shortcut_precalc_all = self.register_shortcut(QAction(self.icon, "Layer Slider - pre-compute all composed ranges", window), "", self.trigger_precalc_all, self.set_precalc_shortcut)
         self.shortcut_export_to_directory = self.register_shortcut(QAction(self.icon, "Layer Slider - export to directory", window), "", self.trigger_export_to_directory, self.set_export_shortcut)
 
-    def unregister_shortcut(self, action: QAction | None, on_keys_changed = None) -> None:
-        if action is None: return None
+    def unregister_shortcut(self, action: QAction | None, on_keys_changed=None) -> None:
+        if action is None:
+            return None
 
-        if on_keys_changed: action.changed.disconnect(on_keys_changed)
+        if on_keys_changed:
+            action.changed.disconnect(on_keys_changed)
         QgsGui.shortcutsManager().unregisterAction(action)
         self.iface.removePluginMenu("&LayerSlider", action)
         self.iface.unregisterMainWindowAction(action)
@@ -174,7 +177,8 @@ class LayerSlider:
         self.dock.next_layer()
 
     def set_slider_tooltip(self):
-        if not self.dock: return
+        if not self.dock:
+            return
 
         left_keys = self.shortcut_left.shortcut()
         right_keys = self.shortcut_right.shortcut()
@@ -188,7 +192,8 @@ class LayerSlider:
         self.dock.set_slider_tooltip(tooltip)
 
     def set_btn_reset_shortcut(self):
-        if not self.dock: return
+        if not self.dock:
+            return
 
         show_all_keys = self.shortcut_toggle_show_all.shortcut()
         show_all_string = f" ({show_all_keys.toString()})" if show_all_keys else ""
@@ -201,42 +206,48 @@ class LayerSlider:
         self.dock.set_btn_reset_shortcut(string)
 
     def set_chk_lockgroups_shortcut(self):
-        if not self.dock: return
+        if not self.dock:
+            return
 
         keys = self.shortcut_toggle_lock.shortcut()
         string = f" ({keys.toString()})" if keys else ''
         self.dock.set_chk_lockgroups_shortcut(string)
 
     def set_chk_avgrasters_shortcut(self):
-        if not self.dock: return
+        if not self.dock:
+            return
 
         keys = self.shortcut_toggle_avgrasters.shortcut()
         string = f" ({keys.toString()})" if keys else ''
         self.dock.set_chk_avgrasters_shortcut(string)
 
     def set_chk_avgdistinct_shortcut(self):
-        if not self.dock: return
+        if not self.dock:
+            return
 
         keys = self.shortcut_toggle_avgdistinct.shortcut()
         string = f" ({keys.toString()})" if keys else ''
         self.dock.set_chk_avgdistinct_shortcut(string)
 
     def set_precalc_shortcut(self):
-        if not self.dock: return
+        if not self.dock:
+            return
 
         keys = self.shortcut_precalc_all.shortcut()
         string = f" ({keys.toString()})" if keys else ''
         self.dock.set_precalc_shortcut(string)
 
     def set_export_shortcut(self):
-        if not self.dock: return
+        if not self.dock:
+            return
 
         keys = self.shortcut_export_to_directory.shortcut()
         string = f" ({keys.toString()})" if keys else ''
         self.dock.set_export_shortcut(string)
 
     def set_settings_shortcut(self):
-        if not self.dock: return
+        if not self.dock:
+            return
 
         keys = self.shortcut_settings.shortcut()
         string = f" ({keys.toString()})" if keys else ''
@@ -269,9 +280,11 @@ class LayerSlider:
         self.dock.show_settings()
 
     def toggle_show_all(self):
-        if not self.dock: return
+        if not self.dock:
+            return
         self.dock.toggle_show_all()
 
     def toggle_show_selected(self):
-        if not self.dock: return
+        if not self.dock:
+            return
         self.dock.toggle_show_selected()

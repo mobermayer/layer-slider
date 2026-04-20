@@ -156,7 +156,7 @@ class DynamicLayerExporter:
             initial_add_to_qgis=GlobalSettings.getExportAddToQgis(),
             persist_to_precalc_settings=False,
         )
-        accepted = dialog.exec_() if hasattr(dialog, "exec_") else dialog.exec()
+        accepted = dialog.exec()
         if not accepted:
             return None
         GlobalSettings.setDynamicExportMode(dialog.selected_destination_mode())
@@ -281,4 +281,3 @@ class DynamicLayerExporter:
                 )
 
         return added_to_qgis
-

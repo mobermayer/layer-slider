@@ -41,7 +41,6 @@ class GlobalSettings():
         "cfloat64",
     }
 
-
     @classmethod
     def getWidgetLocation(cls) -> Qt.DockWidgetArea:
         serialized: Optional[int] = QSettings().value(f"{cls.PREFIX}/widgetLocation")
@@ -55,7 +54,6 @@ class GlobalSettings():
         serialized = None if value is None else int(value)
         QSettings().setValue(f"{cls.PREFIX}/widgetLocation", serialized)
 
-
     @classmethod
     def getWidgetVisible(cls) -> bool:
         return QSettings().value(f"{cls.PREFIX}/widgetVisible", True, bool)
@@ -63,7 +61,6 @@ class GlobalSettings():
     @classmethod
     def setWidgetVisible(cls, value: Optional[bool]):
         QSettings().setValue(f"{cls.PREFIX}/widgetVisible", value)
-
 
     @classmethod
     def getMaxCacheMB(cls) -> int:
@@ -170,7 +167,6 @@ class GlobalSettings():
     @classmethod
     def setDynamicExportAddToQgis(cls, value: Optional[bool]):
         cls.setExportAddToQgis(value)
-
 
     @classmethod
     def getNumAvgrasters(cls) -> int:

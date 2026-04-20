@@ -15,6 +15,7 @@ from .GlobalSettings import GlobalSettings
 PLUGIN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 TMP_DIR = os.path.join(PLUGIN_DIR, ".tmp")
 
+
 class DynamicLayerFactory:
     CUSTOM_PROPERTY = "layerslider/dynamic_layer"
     ORIGINAL_ID_PROPERTY = "layerslider/original_id"
@@ -207,7 +208,7 @@ class DynamicLayerFactory:
             return f"({max_expr}) - ({min_expr})"
         if op == "rms":
             squares = [f"(({part}) * ({part}))" for part in expr_parts]
-            return f"sqrt(({ ' + '.join(squares) }) / {len(expr_parts)})"
+            return f"sqrt(({' + '.join(squares)}) / {len(expr_parts)})"
         if op == "geomean":
             product = " * ".join([f"({part})" for part in expr_parts])
             exponent = 1.0 / len(expr_parts)
@@ -524,14 +525,14 @@ class DynamicLayerFactory:
 
         alpha_array = []
         if alpha_path:
-          ds_alpha = gdal.Open(alpha_path)
-          alpha_bands = [
-              b for b in range(1, ds_alpha.RasterCount + 1)
-              if ds_alpha.GetRasterBand(b).GetColorInterpretation() == gdal.GCI_AlphaBand
-          ]
-          if alpha_bands:
-              alpha_array = ds_alpha.GetRasterBand(alpha_bands[0]).ReadAsArray()
-          ds_alpha = None
+            ds_alpha = gdal.Open(alpha_path)
+            alpha_bands = [
+                b for b in range(1, ds_alpha.RasterCount + 1)
+                if ds_alpha.GetRasterBand(b).GetColorInterpretation() == gdal.GCI_AlphaBand
+            ]
+            if alpha_bands:
+                alpha_array = ds_alpha.GetRasterBand(alpha_bands[0]).ReadAsArray()
+            ds_alpha = None
         num_channels = 2 if len(alpha_array) > 0 else 1
         source_nodata = DynamicLayerFactory._detect_first_layer_nodata(raster_layers)
         output_nodata = None
@@ -557,32 +558,32 @@ class DynamicLayerFactory:
         driver = gdal.GetDriverByName("GTiff")
         ds = driver.Create(
             output_path, width, height, num_channels, datatype,
-            # options=[ # 1.6s; 15.9MB
+            # options=[  # 1.6s; 15.9MB
             #     "COMPRESS=PACKBITS",
             #     "TILED=YES",
             #     "BIGTIFF=IF_SAFER",
             # ],
-            # options=[ # 1.6s; 5.9MB
+            # options=[  # 1.6s; 5.9MB
             #     "COMPRESS=ZSTD",
             #     "ZSTD_LEVEL=1"
             #     "PREDICTOR=2",
             #     "TILED=YES",
             #     "BIGTIFF=IF_SAFER",
             # ],
-            options=[ # 1.7s; 5.4MB
+            options=[  # 1.7s; 5.4MB
                 "COMPRESS=DEFLATE",
                 "PREDICTOR=2",
                 "TILED=YES",
                 "ZLEVEL=1",
                 "BIGTIFF=IF_SAFER",
             ],
-            # options=[ # 1.8s; 5.1MB
+            # options=[  # 1.8s; 5.1MB
             #     "COMPRESS=LZW",
             #     "PREDICTOR=2",
             #     "TILED=YES",
             #     "BIGTIFF=IF_SAFER",
             # ],
-            # options=[ # 8.4s; 4.5MB
+            # options=[  # 8.4s; 4.5MB
             #     "COMPRESS=DEFLATE",
             #     "PREDICTOR=2",
             #     "TILED=YES",
@@ -617,7 +618,7 @@ class DynamicLayerFactory:
 
     @staticmethod
     def _cache_key(raster_layers: List[QgsRasterLayer], operation: str, output_datatype: str):
-        keys = [DynamicLayerFactory._raster_fs_key(l) for l in raster_layers]
+        keys = [DynamicLayerFactory._raster_fs_key(layer) for layer in raster_layers]
         raw = pickle.dumps((DynamicLayerFactory.CACHE_KEY_VERSION, keys, operation, output_datatype))
         return hashlib.sha256(raw).hexdigest()
 
@@ -650,7 +651,8 @@ class DynamicLayerFactory:
                         except FileNotFoundError:
                             pass  # file removed during scan
 
-            if total_size <= max_bytes: return
+            if total_size <= max_bytes:
+                return
 
             # Sort by oldest last-access time
             entries.sort(key=lambda x: x[1])  # (path, atime, size)

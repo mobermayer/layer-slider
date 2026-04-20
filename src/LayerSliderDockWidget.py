@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 from qgis.PyQt.QtGui import QCloseEvent, QHideEvent, QIcon, QShowEvent
 from qgis.PyQt.QtWidgets import (
     QApplication,
@@ -874,11 +874,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
             group = getattr(self, "_root_group", QgsProject.instance().layerTreeRoot())
 
         prev_group = self.current_group_node
-        if (
-            prev_group is not None
-            and group != prev_group
-            and self.chk_avgrasters.isChecked()
-        ):
+        if prev_group is not None and group != prev_group and self.chk_avgrasters.isChecked():
             self.chk_avgrasters.blockSignals(True)
             self.chk_avgrasters.setChecked(False)
             self.chk_avgrasters.blockSignals(False)
@@ -1095,17 +1091,17 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if not self.chk_avgrasters.isChecked():
             for i in layer_range:
                 name = self.get_name_of_node(self.group_layers[i])
-                self.label_index.setText(f"{i+1}/{len(self.group_layers)}:  {name}")
+                self.label_index.setText(f"{i + 1}/{len(self.group_layers)}:  {name}")
         else:
             if len(layer_range) == 1:
                 for i in layer_range:
                     name = self.get_name_of_node(self.group_layers[i])
-                    self.label_index.setText(f"{i+1}–{i+1}/{len(self.group_layers)}:  {name}")
+                    self.label_index.setText(f"{i + 1}–{i + 1}/{len(self.group_layers)}:  {name}")
             else:
                 idx_start = min(layer_range)
                 idx_end = max(layer_range)
                 name = self.compose.dynamic_node.name() if self.compose.dynamic_node_defined() else "—"
-                self.label_index.setText(f"{idx_start+1}–{idx_end+1}/{len(self.group_layers)}:  {name}")
+                self.label_index.setText(f"{idx_start + 1}–{idx_end + 1}/{len(self.group_layers)}:  {name}")
 
     def get_name_of_node(self, node) -> str:
         try:

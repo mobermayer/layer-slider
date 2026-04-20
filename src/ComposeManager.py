@@ -707,7 +707,7 @@ class ComposeManager:
             initial_add_to_qgis=GlobalSettings.getExportAddToQgis(),
             persist_to_precalc_settings=True,
         )
-        accepted = dialog.exec_() if hasattr(dialog, "exec_") else dialog.exec()
+        accepted = dialog.exec()
         if not accepted:
             return None
         return {

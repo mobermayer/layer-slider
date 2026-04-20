@@ -1,5 +1,6 @@
 import typing
-from PyQt5.QtWidgets import QSpinBox, QWidget
+from qgis.PyQt.QtWidgets import QSpinBox, QWidget
+
 
 class PlusSpinBox(QSpinBox):
     def textFromValue(self, v: int) -> str:
