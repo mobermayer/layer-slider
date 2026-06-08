@@ -179,7 +179,7 @@ Create a new version on Zenodo and
 - set the `Publication date`
 - set the `version` (with `vX.Y.Z`)
 - copy its **version-specific DOI**
-- save as draft and preview (may need to upload dummy file) (do not release it yet)
+- save as draft (may need to upload dummy file) (do not release it yet)
 
 Update these places so the **version string**, **year**, and **DOIs** match what Zenodo and GitHub show:
 
@@ -203,18 +203,21 @@ Commit the release and push it to GitHub.
 
 #### 5. Publish
 
-##### 5.1. GitHub release and tag
+##### 5.1. QGIS plugin repository
+
+- Upload same `layer_slider-<version>.zip` to the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/)
+- Verify automatic checks are successful
+
+##### 5.2. GitHub release and tag
 
 - Commit all version and citation changes on `main` (or release branch)
-- create a **Release** from with a new tag, add release notes, and attach the built `layer_slider-<version>.zip` and `layer_slider-<version>.zip.md5`
+- Create a **Release** from `main` with a new tag, add title and release notes, and attach the built `layer_slider-<version>.zip` and `layer_slider-<version>.zip.md5`
 
-##### 5.2. Zenodo
+##### 5.3. Zenodo
 
-- Manually upload the same `layer_slider-<version>.zip` and `layer_slider-<version>.zip.md5` to the draft and publish the record
-
-##### 5.3. QGIS plugin repository
-
-- Upload the same `layer_slider-<version>.zip` to the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/)
+- Manually upload the same `layer_slider-<version>.zip` and `layer_slider-<version>.zip.md5` to the draft
+- Check the preview for correctness
+- Publish the record
 
 ## Changelog
 
