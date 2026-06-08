@@ -126,17 +126,19 @@ The version number is read from `metadata.txt`.
 
 ### Lint
 
-`./scripts/lint.sh` runs the same three checks the QGIS plugin repository performs on upload:
+`./scripts/lint.sh` runs the same three checks the QGIS plugin repository performs on upload, plus a local `.ui` enum check:
 
 - [`flake8`](https://flake8.pycqa.org/) + [`flake8-qgis`](https://github.com/osgeosuomi/flake8-qgis) — code quality and QGIS-specific rules
 - [`bandit`](https://bandit.readthedocs.io/) — security issues
 - [`detect-secrets`](https://github.com/Yelp/detect-secrets) — leaked credentials
+- **ui-enums** — Qt5-compatible enum syntax in `.ui` files (see below)
 
 ```bash
-./scripts/lint.sh                      # run all three
+./scripts/lint.sh                      # run all checks
 ./scripts/lint.sh flake8 --statistics  # run one tool, forwarding extra args
 ./scripts/lint.sh bandit
 ./scripts/lint.sh secrets
+./scripts/lint.sh ui-enums
 ```
 
 The script provisions an isolated virtualenv under `.venv-lint/` on first run and reuses it afterwards (no system-wide Python packages are installed).
@@ -144,6 +146,19 @@ It only needs `python3` with the `venv` module — included with the base Python
 
 Flake8 rules and exclusions are configured in [`.flake8`](.flake8) and match the QGIS plugin repo's check (mostly?).
 Bandit is filtered to medium-and-above severity by default to hide noisy LOW findings (low is ignored in QGIS plugin repo); pass `./scripts/lint.sh bandit --severity-level low` to see everything.
+
+### Qt Designer `.ui` enum syntax
+
+The plugin targets both QGIS 3 (PyQt5) and QGIS 4 (PyQt6). **Python** code uses scoped enums (`Qt.ItemDataRole.DisplayRole`, `QMessageBox.StandardButton.Yes`, …), but **`.ui` files** must use the short Qt5 form because PyQt5’s `uic.loadUiType` cannot compile Qt 6 Designer’s fully qualified names (`Class::EnumType::Value`).
+
+| Qt 6 Designer output (breaks QGIS 3) | Use in `.ui` files |
+|---|---|
+| `Qt::Orientation::Horizontal` | `Qt::Horizontal` |
+| `QDialogButtonBox::StandardButton::Ok` | `QDialogButtonBox::Ok` |
+| `Qt::FocusPolicy::NoFocus` | `Qt::NoFocus` |
+| `Qt::AlignmentFlag::AlignLeft` | `Qt::AlignLeft` |
+
+After saving a form in Qt 6 Designer, search `.ui` files for `\w+::\w+::` and strip the middle segment (regex replace `(Q\w+?)::\w+?::(\w+)` → `$1::$2`), or run `./scripts/lint.sh ui-enums`.
 
 ### Release a new version
 

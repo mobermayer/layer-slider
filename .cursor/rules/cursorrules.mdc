@@ -37,6 +37,19 @@ assets/                  # Icons (SVG/PNG)
 - Naming: use `<WidgetName>Base.ui`, place `.ui` next to its `.py` file in `src/`.
 - Exception: skip `.ui` extraction when the widget structure is mostly dynamic at runtime.
 
+### `.ui` enum syntax (QGIS 3 + QGIS 4)
+
+Qt 6 Designer saves fully qualified enum names (`Class::EnumType::Value`). PyQt5’s `uic` (QGIS 3) turns those into invalid Python (`::` is C++ syntax), so **`.ui` files must use the short Qt5 form** even though Python code uses scoped enums.
+
+| Qt6 Designer (breaks QGIS 3) | Use in `.ui` files (works in QGIS 3 and 4) |
+|---|---|
+| `Qt::Orientation::Horizontal` | `Qt::Horizontal` |
+| `QDialogButtonBox::StandardButton::Ok` | `QDialogButtonBox::Ok` |
+| `Qt::FocusPolicy::NoFocus` | `Qt::NoFocus` |
+| `Qt::AlignmentFlag::AlignLeft` | `Qt::AlignLeft` |
+
+After saving from Qt 6 Designer, search `.ui` files for `\w+::\w+::` and strip the middle segment (regex replace `(Q\w+?)::\w+?::(\w+)` → `$1::$2`). `./scripts/lint.sh ui-enums` catches regressions.
+
 ## Naming Conventions
 
 - **Files**: PascalCase matching primary class (e.g. `DynamicLayerFactory.py` → `DynamicLayerFactory`)

@@ -1,19 +1,21 @@
 #!/bin/bash
 
 # Run the (approximately?) same quality/security checks that the QGIS plugin repository's
-# auto-check performs on upload:
+# auto-check performs on upload, plus a local .ui enum syntax check:
 #   - flake8 (+ flake8-qgis) for code quality and QGIS-specific rules
 #   - bandit                 for security issues
 #   - detect-secrets         for leaked credentials / secrets
+#   - ui-enums               for Qt5-compatible enum syntax in .ui files (QGIS 3)
 #
 # All tools are installed into a local virtualenv (.venv-lint) on first run
 # and reused afterwards, so no system-wide Python packages are required.
 #
 # Usage:
-#   scripts/lint.sh                # run all three checks
+#   scripts/lint.sh                # run all checks
 #   scripts/lint.sh flake8 [args]  # run only one tool, forwarding extra args
 #   scripts/lint.sh bandit [args]
 #   scripts/lint.sh secrets [args]
+#   scripts/lint.sh ui-enums       # Qt5-compatible enum syntax in .ui files
 
 set -euo pipefail
 
@@ -81,21 +83,48 @@ run_secrets() {
     return "${status}"
 }
 
+# Qt 6 Designer writes Class::EnumType::Value in .ui files. PyQt5 uic (QGIS 3)
+# emits invalid Python from that syntax. Flag any enum/set value with two "::"
+# segments before the member name (e.g. Qt::Orientation::Horizontal).
+run_ui_enums() {
+    echo "=== ui-enums ==="
+    local status=0
+    local ui_file
+    local matches
+
+    while IFS= read -r -d '' ui_file; do
+        matches=$(grep -nE '::[A-Za-z_][A-Za-z0-9_]*::' "${ui_file}" || true)
+        if [ -n "${matches}" ]; then
+            echo "${ui_file}: Qt6-style enum syntax breaks QGIS 3 / PyQt5 uic" >&2
+            echo "${matches}" >&2
+            echo "  Use short Qt5 form, e.g. Qt::Horizontal not Qt::Orientation::Horizontal" >&2
+            status=1
+        fi
+    done < <(find src -name '*.ui' -print0 | sort -z)
+
+    # if [ "${status}" -eq 0 ]; then
+    #     echo "OK: no Qt6-only .ui enum syntax found"
+    # fi
+    return "${status}"
+}
+
 if [ $# -eq 0 ]; then
     status=0
     run_flake8 || status=$?
     run_bandit || status=$?
     run_secrets || status=$?
+    run_ui_enums || status=$?
     exit "${status}"
 fi
 
 case "$1" in
-    flake8)  shift; run_flake8 "$@" ;;
-    bandit)  shift; run_bandit "$@" ;;
-    secrets) shift; run_secrets "$@" ;;
+    flake8)   shift; run_flake8 "$@" ;;
+    bandit)   shift; run_bandit "$@" ;;
+    secrets)  shift; run_secrets "$@" ;;
+    ui-enums) shift; run_ui_enums "$@" ;;
     *)
         echo "Unknown subcommand: $1" >&2
-        echo "Usage: $0 [flake8|bandit|secrets] [extra args...]" >&2
+        echo "Usage: $0 [flake8|bandit|secrets|ui-enums] [extra args...]" >&2
         exit 2
         ;;
 esac

@@ -187,7 +187,7 @@
        <number>1</number>
       </property>
       <property name="orientation">
-       <enum>Qt::Orientation::Horizontal</enum>
+       <enum>Qt::Horizontal</enum>
       </property>
       <property name="invertedAppearance">
        <bool>false</bool>
@@ -196,7 +196,7 @@
        <bool>true</bool>
       </property>
       <property name="tickPosition">
-       <enum>QSlider::TickPosition::NoTicks</enum>
+       <enum>QSlider::NoTicks</enum>
       </property>
      </widget>
     </item>
@@ -296,13 +296,13 @@
           </size>
          </property>
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
          </property>
          <property name="toolTip">
           <string>Number of rasters to compose</string>
          </property>
          <property name="alignment">
-          <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
          </property>
          <property name="minimum">
           <number>1</number>
@@ -367,13 +367,13 @@
           </size>
          </property>
          <property name="focusPolicy">
-          <enum>Qt::FocusPolicy::NoFocus</enum>
+          <enum>Qt::NoFocus</enum>
          </property>
          <property name="toolTip">
           <string>Offset of non-overlapping composed rasters</string>
          </property>
          <property name="alignment">
-          <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
          </property>
         </widget>
        </item>
