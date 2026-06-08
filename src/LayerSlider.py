@@ -1,19 +1,5 @@
 """
-LayerSlider QGIS plugin (single-file)
-
-- Non-blocking: uses a QDockWidget
-- Auto-tracks the currently selected group in the main Layers panel
-- Uses TRUE VISIBILITY changes (setItemVisibilityChecked) instead of opacity
-
-Drop this file into your plugin folder (or adapt into the normal QGIS plugin structure).
-This is a self-contained example for QGIS 3.x (PyQGIS).
-
-Tested API usage references:
-- QgsLayerTreeView.index2node / selectionModel().currentChanged
-- QgsLayerTreeGroup / QgsLayerTreeLayer
-- QgsLayerTreeNode.setItemVisibilityChecked
-
-Author: assistant (example)
+LayerSlider QGIS plugin
 """
 
 from typing import Optional

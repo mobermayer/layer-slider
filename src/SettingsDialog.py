@@ -44,8 +44,8 @@ class SettingsDialog(QDialog, FORM_CLASS):
         self._loading = False
         self.setupUi(self)
 
-        self.setWindowModality(Qt.NonModal)
-        self.setAttribute(Qt.WA_DeleteOnClose, False)
+        self.setWindowModality(Qt.WindowModality.NonModal)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
 
         self.edit_cache_dir.setPlaceholderText(GlobalSettings.DEFAULT_CACHE_DIR)
         self.btn_open_cache_dir.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
@@ -164,8 +164,8 @@ class SettingsDialog(QDialog, FORM_CLASS):
             "Remove composed layers",
             "Remove all plugin-managed composed raster layers from the project?\n\n"
             "Layers duplicated in the legend (copies) are not removed.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self.remove_all_composed_layers_requested.emit()

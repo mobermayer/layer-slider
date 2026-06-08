@@ -2,12 +2,20 @@
 <ui version="4.0">
  <class>SettingsDialogBase</class>
  <widget class="QDialog" name="SettingsDialogBase">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>398</width>
+    <height>249</height>
+   </rect>
+  </property>
   <property name="windowTitle">
    <string>Layer Slider - Settings</string>
   </property>
   <layout class="QFormLayout" name="formLayout">
    <property name="fieldGrowthPolicy">
-    <enum>QFormLayout::ExpandingFieldsGrow</enum>
+    <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
    </property>
    <item row="0" column="0">
     <widget class="QLabel" name="label_contrast">
@@ -48,11 +56,11 @@
       </item>
       <item row="0" column="2">
        <widget class="QSpinBox" name="spin_dynamic_n">
-        <property name="maximum">
-         <number>50</number>
-        </property>
         <property name="toolTip">
          <string>Contrast = N × (number of composed layers − 1)</string>
+        </property>
+        <property name="maximum">
+         <number>50</number>
         </property>
        </widget>
       </item>
@@ -72,14 +80,14 @@
       </item>
       <item row="1" column="2">
        <widget class="QSpinBox" name="spin_constant">
+        <property name="toolTip">
+         <string>Fixed contrast value applied to composed layers</string>
+        </property>
         <property name="minimum">
          <number>-100</number>
         </property>
         <property name="maximum">
          <number>100</number>
-        </property>
-        <property name="toolTip">
-         <string>Fixed contrast value applied to composed layers</string>
         </property>
        </widget>
       </item>
@@ -107,6 +115,9 @@
    <item row="2" column="1">
     <widget class="QWidget" name="cache_dir_widget" native="true">
      <layout class="QHBoxLayout" name="cache_dir_layout">
+      <property name="spacing">
+       <number>6</number>
+      </property>
       <property name="leftMargin">
        <number>0</number>
       </property>
@@ -119,9 +130,6 @@
       <property name="bottomMargin">
        <number>0</number>
       </property>
-      <property name="spacing">
-       <number>6</number>
-      </property>
       <item>
        <widget class="QLineEdit" name="edit_cache_dir">
         <property name="toolTip">
@@ -131,21 +139,21 @@
       </item>
       <item>
        <widget class="QPushButton" name="btn_select_cache_dir">
-        <property name="text">
-         <string>...</string>
-        </property>
         <property name="toolTip">
          <string>Select cache directory</string>
+        </property>
+        <property name="text">
+         <string>...</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="btn_open_cache_dir">
-        <property name="text">
-         <string/>
-        </property>
         <property name="toolTip">
          <string>Open cache directory in file manager</string>
+        </property>
+        <property name="text">
+         <string/>
         </property>
        </widget>
       </item>
@@ -161,11 +169,11 @@
    </item>
    <item row="3" column="1">
     <widget class="QSpinBox" name="spin_cache_mb">
-     <property name="maximum">
-      <number>99999</number>
-     </property>
      <property name="suffix">
       <string> MB</string>
+     </property>
+     <property name="maximum">
+      <number>99999</number>
      </property>
     </widget>
    </item>
@@ -193,11 +201,11 @@
       </property>
       <item>
        <widget class="QPushButton" name="btn_remove_all_composed_layers">
-        <property name="text">
-         <string>Remove all from project…</string>
-        </property>
         <property name="toolTip">
          <string>Remove plugin-managed composed raster layers. Duplicated layers (copies) are not removed.</string>
+        </property>
+        <property name="text">
+         <string>Remove all from project…</string>
         </property>
        </widget>
       </item>
@@ -206,11 +214,11 @@
    </item>
    <item row="5" column="0" colspan="2">
     <widget class="QDialogButtonBox" name="button_box">
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Save|QDialogButtonBox::Cancel</set>
-     </property>
      <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Save</set>
      </property>
     </widget>
    </item>

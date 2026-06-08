@@ -102,8 +102,8 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
     def __init__(self, iface, parent=None):
         super().__init__(parent)
 
-        self.setObjectName("LayerSliderDockWidget")
         self.setupUi(self)
+        self.setObjectName("LayerSliderDockWidget")
         self.num_avgoffset = PlusSpinBox.replace_spinbox(self.num_avgoffset)
 
         self.iface = iface
@@ -173,7 +173,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         QTimer.singleShot(200, self._initial_populate_and_bind)
 
     def eventFilter(self, obj, event):
-        if obj is self.slider and event.type() == QEvent.Resize:
+        if obj is self.slider and event.type() == QEvent.Type.Resize:
             self._update_slider_handle_style()
         return False
 
@@ -185,7 +185,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
             opt = QStyleOptionSlider()
             s.initStyleOption(opt)
             groove = s.style().subControlRect(
-                QStyle.CC_Slider, opt, QStyle.SC_SliderGroove, s
+                QStyle.ComplexControl.CC_Slider, opt, QStyle.SubControl.SC_SliderGroove, s
             )
             gw = groove.width() if groove and groove.width() > 0 else max(1, s.width() - 8)
             if not self.group_layers:
@@ -481,7 +481,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
 
     def _configure_compose_row_layout(self):
         combo_policy = self.combo_operation.sizePolicy()
-        combo_policy.setHorizontalPolicy(QSizePolicy.MinimumExpanding)
+        combo_policy.setHorizontalPolicy(QSizePolicy.Policy.MinimumExpanding)
         self.combo_operation.setSizePolicy(combo_policy)
 
         if not hasattr(self, "neighborLayout") or self.neighborLayout is None:
@@ -498,7 +498,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                 break
 
         if spacer_item is not None:
-            spacer_item.changeSize(0, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
+            spacer_item.changeSize(0, 1, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         if combo_index >= 0:
             self.neighborLayout.setStretch(combo_index, 4)
@@ -524,9 +524,9 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if self._btn_avgdistinct_inactive_icon.isNull():
             self._btn_avgdistinct_inactive_icon = QIcon(":images/themes/default/mActionLowerItems.svg")
         if self._btn_avgdistinct_active_icon.isNull():
-            self._btn_avgdistinct_active_icon = self.style().standardIcon(QStyle.SP_DialogYesButton)
+            self._btn_avgdistinct_active_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogYesButton)
         if self._btn_avgdistinct_inactive_icon.isNull():
-            self._btn_avgdistinct_inactive_icon = self.style().standardIcon(QStyle.SP_DialogNoButton)
+            self._btn_avgdistinct_inactive_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogNoButton)
         self.chk_avgdistinct.setText("")
         self.chk_avgdistinct.setAutoRaise(True)
         self._update_avgdistinct_button_layout()
@@ -552,7 +552,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if icon.isNull():
             icon = QIcon.fromTheme("mActionOptions")
         if icon.isNull():
-            icon = self.style().standardIcon(QStyle.SP_FileDialogDetailedView)
+            icon = self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView)
         self.btn_compose_settings.setIcon(icon)
         self.btn_compose_settings.setText("")
         self.btn_compose_settings.setAutoRaise(True)
@@ -564,7 +564,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if icon.isNull():
             icon = QIcon.fromTheme("processingAlgorithm")
         if icon.isNull():
-            icon = self.style().standardIcon(QStyle.SP_ComputerIcon)
+            icon = self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
         self.btn_precalc_all.setIcon(icon)
         self.btn_precalc_all.setText("")
         self.btn_precalc_all.setAutoRaise(True)
@@ -588,9 +588,9 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         ])
 
         if self._btn_reset_show_icon.isNull():
-            self._btn_reset_show_icon = self.style().standardIcon(QStyle.SP_DialogYesButton)
+            self._btn_reset_show_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogYesButton)
         if self._btn_reset_hide_icon.isNull():
-            self._btn_reset_hide_icon = self.style().standardIcon(QStyle.SP_DialogNoButton)
+            self._btn_reset_hide_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogNoButton)
 
         self.btn_reset.setText("")
         self.btn_reset.setAutoRaise(True)
@@ -607,9 +607,9 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         ])
 
         if self._btn_lockgroups_unlocked_icon.isNull():
-            self._btn_lockgroups_unlocked_icon = self.style().standardIcon(QStyle.SP_DialogOpenButton)
+            self._btn_lockgroups_unlocked_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton)
         if self._btn_lockgroups_locked_icon.isNull():
-            self._btn_lockgroups_locked_icon = self.style().standardIcon(QStyle.SP_MessageBoxWarning)
+            self._btn_lockgroups_locked_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxWarning)
 
         self.chk_lockgroups.setCheckable(True)
         self.chk_lockgroups.setText("")
@@ -802,7 +802,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                 role_ids = {int(role) for role in roles}
             except Exception:
                 role_ids = set()
-            if role_ids and int(Qt.DisplayRole) not in role_ids and int(Qt.EditRole) not in role_ids:
+            if role_ids and int(Qt.ItemDataRole.DisplayRole) not in role_ids and int(Qt.ItemDataRole.EditRole) not in role_ids:
                 return
         self._schedule_group_refresh(0)
 
@@ -1177,7 +1177,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         self.btn_compose_settings.setToolTip(f"Settings{self.settings_shortcut}")
 
     def on_btn_reset_clicked(self):
-        if QApplication.keyboardModifiers() & Qt.ShiftModifier:
+        if QApplication.keyboardModifiers() & Qt.KeyboardModifier.ShiftModifier:
             self.toggle_show_selected()
             return
         self.toggle_show_all()

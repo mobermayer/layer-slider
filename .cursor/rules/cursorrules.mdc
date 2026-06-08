@@ -46,6 +46,20 @@ assets/                  # Icons (SVG/PNG)
 - **Constants**: UPPER_SNAKE_CASE (`PLUGIN_DIR`, `CACHE_DIR`)
 - **Assets**: kebab-case (`link-variant.svg`)
 
+## QGIS / Qt Version Target
+
+- Target **QGIS 3.x and QGIS 4.x** (dual support via `qgis.PyQt` shim).
+
+## Qt Enum Style (Qt5 + Qt6 compatible)
+
+- Use scoped enum members that work on both QGIS 3 (Qt 5) and QGIS 4 (Qt 6):
+  - `Qt.ItemDataRole.DisplayRole` (not `Qt.DisplayRole`)
+  - `Qt.KeyboardModifier.ShiftModifier` (not `Qt.ShiftModifier`)
+  - `QMessageBox.StandardButton.Yes` (not `QMessageBox.Yes`)
+  - `QStyle.StandardPixmap.SP_DialogYesButton` (not `QStyle.SP_DialogYesButton`)
+  - `QSizePolicy.Policy.MinimumExpanding` (not `QSizePolicy.MinimumExpanding`)
+- Prefer `isinstance(layer, QgsRasterLayer)` over `layer.type() == QgsMapLayer.VectorLayer`.
+
 ## Imports
 
 - Use `qgis.PyQt` for all Qt imports (NOT `PyQt5` / `PyQt6` directly):
@@ -114,4 +128,4 @@ assets/                  # Icons (SVG/PNG)
 - No automated test suite exists yet — when adding tests, use `pytest` with `qgis.testing`
 - GDAL (`osgeo.gdal`) is available via the QGIS Python environment — no pip install needed
 - Target Python 3.10+ (union type syntax `X | None` is used)
-- Target QGIS 3.x (despite metadata saying 3.0, modern APIs are used)
+- Target QGIS 3.x and QGIS 4.x (metadata: `qgisMinimumVersion=3.0`, `qgisMaximumVersion=4.99`)

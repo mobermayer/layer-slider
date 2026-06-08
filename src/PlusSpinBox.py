@@ -13,7 +13,7 @@ class PlusSpinBox(QSpinBox):
     def replace_spinbox(cls, old: QSpinBox) -> "PlusSpinBox":
         """
         Replace an existing QSpinBox with a PlusSpinBox in-place,
-        keeping its value, range, step, enabled state, and parent layout.
+        keeping its value, range, step, enabled state, size constraints, and parent layout.
         Returns the new PlusSpinBox instance.
         """
         parent: QWidget = old.parentWidget()
@@ -25,10 +25,15 @@ class PlusSpinBox(QSpinBox):
         new_spin.setValue(old.value())
         new_spin.setSingleStep(old.singleStep())
         new_spin.setEnabled(old.isEnabled())
+        new_spin.setObjectName(old.objectName())
         new_spin.setToolTip(old.toolTip())
         new_spin.setPrefix(old.prefix())
         new_spin.setSuffix(old.suffix())
         new_spin.setWrapping(old.wrapping())
+        new_spin.setSizePolicy(old.sizePolicy())
+        new_spin.setMinimumSize(old.minimumSize())
+        new_spin.setMaximumSize(old.maximumSize())
+        new_spin.setFocusPolicy(old.focusPolicy())
 
         # Replace widget in layout if possible
         if layout:

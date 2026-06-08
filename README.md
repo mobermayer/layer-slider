@@ -7,11 +7,14 @@
 **Layer Slider** is a [QGIS](https://qgis.org) plugin for navigating and composing ordered layers or layer groups with an intuitive slider, keyboard shortcuts, and dynamic layer compositing.
 It is designed for any workflow where you need to flip through a sequence of layers — whether they represent increasing depth, successive points in time, or alternative visualizations of the same area.
 
-Install directly via the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/) or manually (see [below](#installation)). If you use Layer Slider in your academic work, please [cite it](#citing-layer-slider).
+Install directly via the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/) in QGIS under `Plugins > Manage and Install Plugins... > All` and search for `Layer Slider`.
 
 Developed by Maximilian Obermayer.
 For collaboration and research- or software-related inquiries, visit my homepage [mobermayer.at](https://mobermayer.at).
 For issues regarding the Layer Slider, please use the [issue tracker](https://github.com/mobermayer/layer-slider/issues).
+If you use Layer Slider in your academic work, please cite it:
+
+> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.1.1). Zenodo. https://doi.org/10.5281/zenodo.19665151 . Available at https://github.com/mobermayer/layer-slider
 
 ## Demo
 Basic demonstration with ground-penetrating radar depth slices:
@@ -29,14 +32,6 @@ https://github.com/user-attachments/assets/1ee1a25f-c6ae-4190-a5ee-4bfcf686bfbc
 - **Climate & weather data:** Walk through monthly or seasonal rasters of precipitation, temperature, NDVI, etc.
 - **Environmental monitoring:** Cycle through pollution concentration grids, flood extent snapshots, or ecological survey layers.
 - **Urban change detection:** Review before/after layers for construction, demolition, or infrastructure projects.
-
-## Citing Layer Slider
-
-If you use Layer Slider in your academic work, please cite it (or whichever version you use):
-
-> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.1.1). Zenodo. https://doi.org/10.5281/zenodo.19665151 . Available at https://github.com/mobermayer/layer-slider
-
-A machine-readable [`CITATION.cff`](CITATION.cff) file is included in this repository and will be picked up automatically by GitHub and Zenodo.
 
 ## Usage
 The functionality, is explained in each element's tooltip.
@@ -89,7 +84,7 @@ GPR Depth Composer included in ArchaeoAnalyst is an ArcGIS toolset that can comp
 
 ### From the QGIS Plugin Repository (recommended)
 
-Install directly via the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/) in QGIS. Search for `Layer Slider` in the QGIS plugin manager and install.
+Install directly via the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/) in QGIS under `Plugins > Manage and Install Plugins... > All` and search for `Layer Slider`.
 
 ### Install manually
 
@@ -99,23 +94,12 @@ Install directly via the [QGIS plugin repository](https://plugins.qgis.org/plugi
 
 > **Note:** You will **not** receive automatic updates in the Plugin Manager; upgrade by downloading a newer release ZIP and installing it again (or switch to the [repository install](#from-the-qgis-plugin-repository-recommended) for updates).
 
-### Development install
-
-1. Download or clone this repository.
-2. Symlink or copy the folder into your QGIS plugins directory.
-   On Linux this is typically:
-   ```
-   ln -s /path/to/layer-slider ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/layer-slider-main
-   ```
-3. Restart QGIS and enable **Layer Slider** in *Plugins → Manage and Install Plugins*.
-
 ## Development
 
 ### Prerequisites
 
-- QGIS 3.x (3.28 LTS or newer recommended)
+- QGIS 4.x or QGIS 3.x (3.28 LTS or newer recommended)
 - Python 3.10+ (ships with QGIS)
-- No additional Python packages required — the plugin uses only the QGIS/Qt/GDAL libraries bundled with QGIS.
 
 ### Local setup
 
@@ -123,10 +107,12 @@ Install directly via the [QGIS plugin repository](https://plugins.qgis.org/plugi
 # Clone the repo
 git clone https://github.com/mobermayer/layer-slider.git
 
-# Symlink into your QGIS plugins directory
-ln -s "$(pwd)/layer-slider" ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/layer-slider-main
+# Symlink into your QGIS plugins directory, on linux this is typically
+ln -s /PATH/TO/layer-slider ~/.local/share/QGIS/QGIS4/profiles/default/python/plugins/layer-slider-main
+# or for qgis3
+ln -s /PATH/TO/layer-slider ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/layer-slider-main
 
-# Restart QGIS, then enable the plugin in the Plugin Manager
+# Restart QGIS, then enable "Layer Slider" in "Plugins > Manage and Install Plugins... > Installed"
 ```
 
 ### Build

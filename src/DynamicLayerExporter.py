@@ -224,10 +224,10 @@ class DynamicLayerExporter:
                 self.dock,
                 "Overwrite file?",
                 f"The file already exists:\n{output_path}\n\nDo you want to overwrite it?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
             )
-            if overwrite != QMessageBox.Yes:
+            if overwrite != QMessageBox.StandardButton.Yes:
                 return
 
         try:

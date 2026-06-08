@@ -151,7 +151,7 @@ class ExportDialog(QDialog, FORM_CLASS):
             self,
             "Select output directory",
             start_dir,
-            QFileDialog.ShowDirsOnly,
+            QFileDialog.Option.ShowDirsOnly,
         )
         if selected_dir:
             self.destination_input.setText(selected_dir)

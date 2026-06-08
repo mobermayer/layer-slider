@@ -896,7 +896,7 @@ class ComposeManager:
             self.dock.btn_precalc_all.setToolTip("Cancelling pre-calculation...")
             return
 
-        if QApplication.keyboardModifiers() & Qt.ShiftModifier:
+        if QApplication.keyboardModifiers() & Qt.KeyboardModifier.ShiftModifier:
             self._on_precalc_all_shift_clicked()
             return
 
