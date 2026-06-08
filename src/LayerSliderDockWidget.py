@@ -103,7 +103,6 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         super().__init__(parent)
 
         self.setupUi(self)
-        self.setObjectName("LayerSliderDockWidget")
         self.num_avgoffset = PlusSpinBox.replace_spinbox(self.num_avgoffset)
 
         self.iface = iface
@@ -258,6 +257,11 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         except Exception:
             pass
         self.exporter.disconnect_tree_context_menu()
+        try:
+            self.hide()
+            self.setParent(None)
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Selection signal management
