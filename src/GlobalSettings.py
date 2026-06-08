@@ -42,17 +42,60 @@ class GlobalSettings():
     }
 
     @classmethod
+    def _default_widget_location(cls) -> Qt.DockWidgetArea:
+        return Qt.DockWidgetArea.LeftDockWidgetArea
+
+    @classmethod
+    def _deserialize_dock_widget_area(cls, value) -> Qt.DockWidgetArea:
+        default = cls._default_widget_location()
+        if value is None:
+            return default
+        if isinstance(value, Qt.DockWidgetArea):
+            return value
+        if isinstance(value, int):
+            try:
+                return Qt.DockWidgetArea(value)
+            except ValueError:
+                return default
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return default
+            try:
+                return Qt.DockWidgetArea(int(stripped))
+            except ValueError:
+                name = stripped.rsplit(".", 1)[-1]
+                try:
+                    return Qt.DockWidgetArea[name]
+                except KeyError:
+                    return default
+        return default
+
+    @classmethod
+    def _serialize_dock_widget_area(cls, value) -> Optional[int]:
+        if value is None:
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, Qt.DockWidgetArea):
+            return int(getattr(value, "value", value))
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return int(getattr(cls._deserialize_dock_widget_area(value), "value"))
+
+    @classmethod
     def getWidgetLocation(cls) -> Qt.DockWidgetArea:
-        serialized: Optional[int] = QSettings().value(f"{cls.PREFIX}/widgetLocation")
-        if serialized is None:
-            return Qt.DockWidgetArea.LeftDockWidgetArea
-        else:
-            return Qt.DockWidgetArea(serialized)
+        return cls._deserialize_dock_widget_area(
+            QSettings().value(f"{cls.PREFIX}/widgetLocation")
+        )
 
     @classmethod
     def setWidgetLocation(cls, value: Optional[Qt.DockWidgetArea]):
-        serialized = None if value is None else int(value)
-        QSettings().setValue(f"{cls.PREFIX}/widgetLocation", serialized)
+        QSettings().setValue(
+            f"{cls.PREFIX}/widgetLocation",
+            cls._serialize_dock_widget_area(value),
+        )
 
     @classmethod
     def getWidgetVisible(cls) -> bool:
