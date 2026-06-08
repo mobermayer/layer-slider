@@ -733,7 +733,10 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
 
         for i in range(self.combo_group.count()):
             if self.combo_group.itemData(i) == group:
-                self.combo_group.setCurrentIndex(i)
+                if self.combo_group.currentIndex() != i:
+                    self.combo_group.setCurrentIndex(i)
+                else:
+                    self.on_combo_changed(i)
                 return
 
         self.combo_group.blockSignals(True)
@@ -867,7 +870,6 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
     def on_combo_changed(self, index):
         if self.update_lock > 0:
             return
-        self.set_num_avgoffset_maximum()
         self.user_has_interacted = False
 
         if not hasattr(self, "_root_group"):
@@ -924,6 +926,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
             self.label_index.setText("No children in group")
             self.compose.update_precalc_button_state()
             self._update_slider_handle_style()
+            self.set_num_avgoffset_maximum()
             return
 
         self.update_btn_reset_text()
@@ -944,6 +947,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         self._update_label_only(initial_idx)
         self.compose.update_precalc_button_state()
         self._update_slider_handle_style()
+        self.set_num_avgoffset_maximum()
 
     # ------------------------------------------------------------------
     # Layer range mapping (delegated to LayerRangeMapper)
