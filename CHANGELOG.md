@@ -1,5 +1,6 @@
 # WIP
 - Add QGIS 4 support
+- Fix edge cases in compositing number inputs
 
 # v1.1.1 (2026-04-20)
 - Code cleanup (to avoid false positive security warning)

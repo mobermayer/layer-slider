@@ -35,6 +35,8 @@ from .SettingsDialog import SettingsDialog
 
 FORM_CLASS_LAYER, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), 'LayerSliderDockWidgetBase.ui'))
 
+_UNCHECKED_NUM_AVGRASTERS_MAX = 99
+
 # Used as empty-group size and minimum width when the thumb is sized to groove / n.
 _SLIDER_HANDLE_MIN_WIDTH = 18
 # Horizontal inset (each side) so a single full-span handle stays inside the groove (no right-edge clip).
@@ -129,6 +131,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         self.num_avgrasters.setValue(GlobalSettings.getNumAvgrasters())
         self.chk_avgdistinct.setChecked(GlobalSettings.getChkDistinct())
         self.num_avgoffset.setValue(GlobalSettings.getDistinctOffset())
+        self._update_num_avgrasters_limits()
         self._init_operation_combo()
         self._configure_compose_row_layout()
         self._init_distinct_icon()
@@ -391,6 +394,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
 
     def on_chk_avgrasters_toggled(self, state):
         if state is True or state is False:
+            self._update_num_avgrasters_limits()
             self.compose.invalidate_single_compose_request(cancel_task=False)
             mode_enabled_now = bool(state)
             mode_enabled_before = not mode_enabled_now
@@ -444,6 +448,24 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                 self.on_combo_changed(cur_index)
                 self.apply_visibility_from_index(self.slider.value())
         self.compose.update_precalc_button_state()
+
+    def _get_max_num_avgrasters(self) -> int:
+        return len(self.compose._current_compose_candidate_nodes())
+
+    def _update_num_avgrasters_limits(self):
+        if self.chk_avgrasters.isChecked():
+            group_max = self._get_max_num_avgrasters()
+            if group_max >= 1:
+                self.num_avgrasters.setMaximum(group_max)
+                if self.num_avgrasters.value() > group_max:
+                    self.num_avgrasters.blockSignals(True)
+                    try:
+                        self.num_avgrasters.setValue(group_max)
+                        GlobalSettings.setNumAvgrasters(group_max)
+                    finally:
+                        self.num_avgrasters.blockSignals(False)
+        else:
+            self.num_avgrasters.setMaximum(_UNCHECKED_NUM_AVGRASTERS_MAX)
 
     def set_num_avgoffset_maximum(self):
         maximum = max(0, min(self.num_avgrasters.value() - 1, len(self.get_layer_ranges()) - 1))
@@ -889,6 +911,9 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if group != self.current_group_node:
             self.compose.invalidate_single_compose_request(cancel_task=False)
         self.current_group_node = group
+
+        if self.chk_avgrasters.isChecked():
+            self._update_num_avgrasters_limits()
 
         av_children = [
             c

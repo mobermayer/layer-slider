@@ -34,6 +34,7 @@ class PlusSpinBox(QSpinBox):
         new_spin.setMinimumSize(old.minimumSize())
         new_spin.setMaximumSize(old.maximumSize())
         new_spin.setFocusPolicy(old.focusPolicy())
+        new_spin.setAlignment(old.alignment())
 
         # Replace widget in layout if possible
         if layout:
