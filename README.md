@@ -14,7 +14,7 @@ For collaboration and research- or software-related inquiries, visit my homepage
 For issues regarding the Layer Slider, please use the [issue tracker](https://github.com/mobermayer/layer-slider/issues).
 If you use Layer Slider in your academic work, please cite it:
 
-> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.1.1). Zenodo. https://doi.org/10.5281/zenodo.19665151 . Available at https://github.com/mobermayer/layer-slider
+> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.2.0). Zenodo. https://doi.org/10.5281/zenodo.20597604 . Available at https://github.com/mobermayer/layer-slider
 
 ## Demo
 Basic demonstration with ground-penetrating radar depth slices:
@@ -183,9 +183,9 @@ Create a new version on Zenodo and
 
 Update these places so the **version string**, **year**, and **DOIs** match what Zenodo and GitHub show:
 
-- [`metadata.txt`](metadata.txt): citation sentence inside the `about=` block (version, year, DOI URL)
-- [`README.md`](README.md): version, year and DOI URL in [Citing Layer Slider](#citing-layer-slider)
-- [`CITATION.cff`](CITATION.cff): `version`, `doi`, and `date-released`
+- [`metadata.txt`](metadata.txt): citation example inside the `about=` block (version, year, DOI URL)
+- [`README.md`](README.md): citation example (version, year, DOI URL)
+- [`CITATION.cff`](CITATION.cff): `version`, `date-released`, `doi`
 
 #### 3. Build
 
