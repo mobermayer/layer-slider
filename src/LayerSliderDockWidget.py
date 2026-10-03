@@ -25,6 +25,7 @@ from qgis.core import (
 from qgis.PyQt.QtCore import QEvent, Qt, QTimer, pyqtSignal
 import os
 
+from .FocusAwareSpinBox import FocusAwareSpinBox
 from .PlusSpinBox import PlusSpinBox
 from .GlobalSettings import GlobalSettings
 from .ComposeManager import ComposeManager
@@ -105,6 +106,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         super().__init__(parent)
 
         self.setupUi(self)
+        self.num_avgrasters = FocusAwareSpinBox.replace_spinbox(self.num_avgrasters)
         self.num_avgoffset = PlusSpinBox.replace_spinbox(self.num_avgoffset)
 
         self.iface = iface
