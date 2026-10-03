@@ -1,8 +1,3 @@
----
-description: QGIS Layer Slider plugin conventions and coding patterns
-alwaysApply: true
----
-
 # QGIS Layer Slider Plugin
 
 This is a QGIS plugin (Python) providing a dock widget for navigating and toggling layer visibility via a slider control.
