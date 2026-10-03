@@ -114,6 +114,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         self.current_group_node = None
         self.group_layers = []
         self.user_has_interacted = False
+        self._slider_value_changed_during_interaction = False
         self._lt_model = None
         self._btn_avgdistinct_active_icon = QIcon()
         self._btn_avgdistinct_inactive_icon = QIcon()
@@ -147,7 +148,8 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
 
         # UI signals
         self.slider.valueChanged.connect(self.on_slider_changed)
-        self.slider.sliderPressed.connect(self._mark_user_interaction)
+        self.slider.sliderPressed.connect(self._on_slider_pressed)
+        self.slider.sliderReleased.connect(self._on_slider_released)
         self.slider.rangeChanged.connect(self._update_slider_handle_style)
         self.slider.installEventFilter(self)
         QTimer.singleShot(0, self._update_slider_handle_style)
@@ -229,6 +231,14 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
             pass
         try:
             self.slider.rangeChanged.disconnect(self._update_slider_handle_style)
+        except Exception:
+            pass
+        try:
+            self.slider.sliderPressed.disconnect(self._on_slider_pressed)
+        except Exception:
+            pass
+        try:
+            self.slider.sliderReleased.disconnect(self._on_slider_released)
         except Exception:
             pass
 
@@ -1012,8 +1022,18 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
     def _mark_user_interaction(self):
         self.user_has_interacted = True
 
+    def _on_slider_pressed(self):
+        self._mark_user_interaction()
+        self._slider_value_changed_during_interaction = False
+
+    def _on_slider_released(self):
+        if not self._slider_value_changed_during_interaction:
+            self.apply_visibility_from_index(self.slider.value())
+
     def on_slider_changed(self, value):
         self.user_has_interacted = True
+        if self.slider.isSliderDown():
+            self._slider_value_changed_during_interaction = True
         if not self.current_group_node or not self._node_belongs_to_root(self.current_group_node):
             return
         self.apply_visibility_from_index(value)
@@ -1060,10 +1080,14 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
             return
 
         layers_to_average: List[QgsRasterLayer] = []
+        visibility_changed = False
+        active_single_node = None
         self.update_lock += 1
         try:
             g = self.current_group_node
             while g and isinstance(g, QgsLayerTreeGroup):
+                if not g.itemVisibilityChecked():
+                    visibility_changed = True
                 g.setItemVisibilityChecked(True)
                 g = g.parent()
 
@@ -1072,11 +1096,15 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                     if len(layer_range) == 1:
                         for i in layer_range:
                             node = self.group_layers[i]
+                            if not node.itemVisibilityChecked():
+                                visibility_changed = True
                             node.setItemVisibilityChecked(True)
-                            self.repaint_safe(node)
+                            active_single_node = node
                     else:
                         nodes = [self.group_layers[i] for i in layer_range]
                         for node in nodes:
+                            if node.itemVisibilityChecked():
+                                visibility_changed = True
                             node.setItemVisibilityChecked(False)
                         layers = [node.layer() for node in nodes if isinstance(node, QgsLayerTreeLayer)]
                         layers_to_average = [layer for layer in layers if isinstance(layer, QgsRasterLayer)]
@@ -1084,9 +1112,15 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                             raise Exception("Received non-raster-layer to average")
                 else:
                     for i in layer_range:
-                        self.group_layers[i].setItemVisibilityChecked(False)
+                        node = self.group_layers[i]
+                        if node.itemVisibilityChecked():
+                            visibility_changed = True
+                        node.setItemVisibilityChecked(False)
         finally:
             self.update_lock -= 1
+
+        if visibility_changed and active_single_node is not None:
+            self.repaint_safe(active_single_node)
 
         self._update_label_only(idx)
         self.update_btn_reset_text()
@@ -1293,14 +1327,18 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         self.slider.setFocus()
 
     def prev_layer(self):
-        if not self.slider:
-            return
-        self.slider.setValue(self.slider.value() - 1)
+        self._step_layer(-1)
 
     def next_layer(self):
+        self._step_layer(1)
+
+    def _step_layer(self, offset: int):
         if not self.slider:
             return
-        self.slider.setValue(self.slider.value() + 1)
+        current_value = self.slider.value()
+        self.slider.setValue(current_value + offset)
+        if self.slider.value() == current_value:
+            self.apply_visibility_from_index(current_value)
 
     def set_slider_tooltip(self, tooltip):
         if not self.slider:

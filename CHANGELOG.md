@@ -1,3 +1,6 @@
+# Unreleased
+- (Re-)activate the selected layer on slider-handle clicks and previous/next shortcuts
+
 # v1.2.0 (2026-06-08)
 - Add QGIS 4 support
 - Fix edge cases in compositing number inputs
