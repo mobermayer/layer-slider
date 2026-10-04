@@ -58,6 +58,12 @@ class DynamicLayerExporter:
             return
         if menu.actions():
             menu.addSeparator()
+        if self._is_canonical_dynamic_layer(dynamic_layer):
+            style_action = QAction("Use Style from First Raster", menu)
+            style_action.triggered.connect(
+                lambda _checked=False, layer=dynamic_layer: self.dock.compose.reset_dynamic_layer_style(layer)
+            )
+            menu.addAction(style_action)
         export_action = QAction("Export composed layer...", menu)
         export_action.triggered.connect(
             lambda _checked=False, layer=dynamic_layer: self.export_interactive(layer)
@@ -103,6 +109,12 @@ class DynamicLayerExporter:
         if not isinstance(layer, QgsRasterLayer):
             return False
         return bool(layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False))
+
+    @staticmethod
+    def _is_canonical_dynamic_layer(layer: Optional[QgsRasterLayer]) -> bool:
+        if not DynamicLayerExporter._is_plugin_dynamic_raster_layer(layer):
+            return False
+        return layer.id() == layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None)
 
     # ------------------------------------------------------------------
     # Source resolution

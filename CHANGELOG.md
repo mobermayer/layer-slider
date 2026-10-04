@@ -1,4 +1,5 @@
 # Unreleased
+- Composed layers use styling of first layer and styling-changes are persisted
 - Allow keyboard editing of compositing values
 - (Re-)activate the selected layer on slider-handle clicks and previous/next shortcuts
 

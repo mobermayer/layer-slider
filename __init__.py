@@ -15,5 +15,14 @@ the Free Software Foundation; either version 3 of the License, or
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
+    import sys
+
+    if sys.version_info < (3, 10):
+        version = "{}.{}".format(sys.version_info.major, sys.version_info.minor)
+        raise RuntimeError(
+            "Layer Slider requires Python 3.10 or newer; "
+            "this QGIS build uses Python {}.".format(version)
+        )
+
     from .src.LayerSlider import LayerSlider
     return LayerSlider(iface)

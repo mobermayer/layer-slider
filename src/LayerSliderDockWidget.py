@@ -253,6 +253,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
             pj.layersRemoved.disconnect(self._on_project_layers_changed)
         except Exception:
             pass
+        self.compose.disconnect_project_signals()
 
         try:
             lt = self.iface.layerTreeView()

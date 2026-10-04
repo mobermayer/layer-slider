@@ -43,6 +43,7 @@ Note that the individual layers must be inside a group in the QGIS layer tree.
 This plugin provides an improved UI for interacting with these data, not the data themselves.
 Compositing currently only works on local raster layers with the `gdal` provider (e.g. GeoTIFF) and outputs grayscale images.
 Composed layers can be exported by `right-click > Export composed layer...` on the composed layer or `shift+click` on the pre-calculate button.
+Their display settings follow the first raster in the group; right-click the composed layer and choose `Use Style from First Raster` to clear style overrides.
 
 ### Key features
 
@@ -98,8 +99,8 @@ Install directly via the [QGIS plugin repository](https://plugins.qgis.org/plugi
 
 ### Prerequisites
 
-- QGIS 4.x or QGIS 3.x (3.28 LTS or newer recommended)
-- Python 3.10+ (ships with QGIS)
+- QGIS 4.x or QGIS 3.6+ (3.28 LTS or newer recommended)
+- Python 3.10+
 
 ### Local setup
 

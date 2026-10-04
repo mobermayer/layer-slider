@@ -1,5 +1,5 @@
 from typing import List, Optional
-from qgis.core import Qgis, QgsCoordinateTransformContext, QgsLayerTreeGroup, QgsRasterLayer
+from qgis.core import Qgis, QgsCoordinateTransformContext, QgsLayerTreeGroup, QgsProject, QgsRasterLayer
 from qgis.analysis import QgsRasterCalculator, QgsRasterCalculatorEntry
 from osgeo import gdal
 import math
@@ -21,6 +21,7 @@ class DynamicLayerFactory:
     ORIGINAL_ID_PROPERTY = "layerslider/original_id"
     GROUP_UUID_PROPERTY = "layerslider/group_uuid"
     ORIGIN_GROUP_UUID_PROPERTY = "layerslider/origin_group_uuid"
+    LAYER_COUNT_PROPERTY = "layerslider/layer_count"
     CACHE_KEY_VERSION = 6
     _INT_OUTPUT_TYPES = {
         gdal.GDT_Byte,
@@ -95,6 +96,64 @@ class DynamicLayerFactory:
         except Exception:
             pass
         return u
+
+    @staticmethod
+    def ensure_unique_layer_slider_group_uuid(
+        group: QgsLayerTreeGroup,
+        root: QgsLayerTreeGroup,
+        preferred_group: QgsLayerTreeGroup | None = None,
+    ) -> str:
+        """Give a copied group its own identity while keeping its copied settings."""
+        existing = DynamicLayerFactory.layer_slider_group_uuid(group)
+        if not existing:
+            return DynamicLayerFactory.ensure_layer_slider_group_uuid(group)
+        matches = []
+
+        def visit(parent):
+            for child in parent.children():
+                if not isinstance(child, QgsLayerTreeGroup):
+                    continue
+                if DynamicLayerFactory.layer_slider_group_uuid(child) == existing:
+                    matches.append(child)
+                visit(child)
+
+        visit(root)
+        if len(matches) <= 1 or group not in matches:
+            return existing
+
+        # Retain the live group reference when available. After a project reload,
+        # use the canonical output's tree position as the best persisted clue.
+        keep = preferred_group if preferred_group in matches else matches[0]
+        if preferred_group not in matches:
+            for layer in QgsProject.instance().mapLayers().values():
+                try:
+                    if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+                        continue
+                    if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
+                        continue
+                    if str(layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or "").strip() != existing:
+                        continue
+                    node = root.findLayer(layer.id())
+                    parent = node.parent() if node is not None else None
+                    siblings = parent.children() if parent is not None else []
+                    try:
+                        index = siblings.index(node)
+                        if index + 1 < len(siblings) and siblings[index + 1] in matches:
+                            keep = siblings[index + 1]
+                    except Exception:
+                        pass
+                    break
+                except Exception:
+                    continue
+
+        if group is keep:
+            return existing
+        new_uuid = uuid.uuid4().hex
+        try:
+            group.setCustomProperty(DynamicLayerFactory.GROUP_UUID_PROPERTY, new_uuid)
+        except Exception:
+            return existing
+        return new_uuid
 
     @staticmethod
     def layer_slider_group_uuid(group: QgsLayerTreeGroup) -> str:

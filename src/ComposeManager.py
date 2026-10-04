@@ -4,12 +4,12 @@ import re
 import shutil
 import traceback
 
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, QTimer
 from qgis.PyQt.QtWidgets import QApplication
 from qgis.core import (
     Qgis,
     QgsApplication,
-    QgsBrightnessContrastFilter,
+    QgsDataProvider,
     QgsLayerTreeGroup,
     QgsLayerTreeLayer,
     QgsProject,
@@ -18,6 +18,7 @@ from qgis.core import (
 )
 
 from .DynamicLayerFactory import DynamicLayerFactory
+from .DynamicLayerStyle import DynamicLayerStyle
 from .ExportDialog import ExportDialog
 from .GlobalSettings import GlobalSettings
 from . import LayerRangeMapper
@@ -37,6 +38,19 @@ class ComposeManager:
         self._pending_single_compose_request: Optional[dict] = None
         self._desired_single_compose_cache_key: Optional[str] = None
         self._active_batch_precalc_task: Optional[QgsTask] = None
+        self._style_update_guard = 0
+        self._dynamic_style_callbacks = {}
+        self._project_removal_signal_connected = False
+        self._layer_tree_root = None
+        self._layer_tree_group_callbacks = []
+        self._group_repair_scheduled = False
+        self._origin_group_nodes = {}
+        try:
+            QgsProject.instance().layersWillBeRemoved.connect(self._on_project_layers_will_be_removed)
+            self._project_removal_signal_connected = True
+        except Exception:
+            pass
+        self._connect_layer_tree_root_signal()
 
     # ------------------------------------------------------------------
     # Layer compatibility
@@ -107,9 +121,18 @@ class ComposeManager:
         return self._find_and_cache_dynamic_tree_node(uid)
 
     def rebuild_dynamic_nodes_from_project(self):
+        for layer, callback in list(self._dynamic_style_callbacks.values()):
+            try:
+                layer.styleChanged.disconnect(callback)
+            except Exception:
+                pass
+        self._dynamic_style_callbacks.clear()
         self._dynamic_nodes.clear()
+        self._origin_group_nodes.clear()
         project = QgsProject.instance()
         root = project.layerTreeRoot()
+        self._connect_layer_tree_root_signal(root)
+        self._repair_duplicate_group_ids(root)
         for layer in project.mapLayers().values():
             try:
                 if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
@@ -125,6 +148,258 @@ class ComposeManager:
                     self._dynamic_nodes[ou] = tnode
             except Exception:
                 pass
+
+        for origin_uuid, node in list(self._dynamic_nodes.items()):
+            try:
+                layer = node.layer()
+                group = DynamicLayerFactory.find_group_by_layer_slider_uuid(root, origin_uuid)
+                source = self._first_raster_in_group(group)
+                if layer is None or group is None or source is None:
+                    continue
+                self._apply_dynamic_layer_style(
+                    layer,
+                    group,
+                    source,
+                    self._dynamic_layer_count(layer, group),
+                    capture_current=True,
+                )
+            except Exception:
+                traceback.print_exc()
+            try:
+                self._connect_dynamic_style_tracking(node.layer())
+            except Exception:
+                pass
+
+    def _connect_layer_tree_root_signal(self, root=None):
+        new_root = root or QgsProject.instance().layerTreeRoot()
+        for group, callback in self._layer_tree_group_callbacks:
+            try:
+                group.addedChildren.disconnect(callback)
+            except Exception:
+                pass
+        self._layer_tree_group_callbacks.clear()
+
+        def connect_group(group):
+            try:
+                callback = self._on_layer_tree_children_added
+                group.addedChildren.connect(callback)
+                self._layer_tree_group_callbacks.append((group, callback))
+            except Exception:
+                pass
+            for child in group.children():
+                if isinstance(child, QgsLayerTreeGroup):
+                    connect_group(child)
+
+        try:
+            connect_group(new_root)
+            self._layer_tree_root = new_root
+        except Exception:
+            self._layer_tree_root = None
+
+    def _repair_duplicate_group_ids(self, root):
+        def visit(group):
+            for child in group.children():
+                if isinstance(child, QgsLayerTreeGroup):
+                    group_uuid = DynamicLayerFactory.layer_slider_group_uuid(child)
+                    if group_uuid:
+                        DynamicLayerFactory.ensure_unique_layer_slider_group_uuid(
+                            child,
+                            root,
+                            self._origin_group_nodes.get(group_uuid),
+                        )
+                    visit(child)
+
+        visit(root)
+        current_groups = {}
+
+        def record(group):
+            group_uuid = DynamicLayerFactory.layer_slider_group_uuid(group)
+            if group_uuid:
+                current_groups[group_uuid] = group
+            for child in group.children():
+                if isinstance(child, QgsLayerTreeGroup):
+                    record(child)
+
+        record(root)
+        self._origin_group_nodes = current_groups
+
+    def _on_layer_tree_children_added(self, parent, index_from: int, index_to: int):
+        if self.dock.update_lock > 0 or self.dock._unloaded:
+            return
+        try:
+            for index in range(index_from, index_to + 1):
+                node = parent.children()[index]
+                if isinstance(node, QgsLayerTreeGroup):
+                    if not self._group_repair_scheduled:
+                        self._group_repair_scheduled = True
+                        QTimer.singleShot(0, self._repair_group_ids_after_tree_change)
+                    break
+        except Exception:
+            pass
+
+    def _repair_group_ids_after_tree_change(self):
+        self._group_repair_scheduled = False
+        if self.dock._unloaded:
+            return
+        try:
+            self._repair_duplicate_group_ids(QgsProject.instance().layerTreeRoot())
+            self._connect_layer_tree_root_signal(QgsProject.instance().layerTreeRoot())
+        except Exception:
+            pass
+
+    @staticmethod
+    def _is_source_raster(layer) -> bool:
+        if not ComposeManager.is_dynamiclayer_compatible(layer):
+            return False
+        return not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False)
+
+    @staticmethod
+    def _first_raster_in_group(group) -> Optional[QgsRasterLayer]:
+        if not isinstance(group, QgsLayerTreeGroup):
+            return None
+        for child in group.children():
+            if isinstance(child, QgsLayerTreeLayer):
+                layer = child.layer()
+                if ComposeManager._is_source_raster(layer):
+                    return layer
+        return None
+
+    @staticmethod
+    def _dynamic_layer_count(layer: QgsRasterLayer, group=None) -> int:
+        try:
+            count = int(layer.customProperty(DynamicLayerFactory.LAYER_COUNT_PROPERTY, 0))
+            if count > 0:
+                return count
+        except Exception:
+            pass
+        if isinstance(group, QgsLayerTreeGroup):
+            count = 0
+            for child in group.children():
+                if isinstance(child, QgsLayerTreeLayer) and ComposeManager._is_source_raster(child.layer()):
+                    count += 1
+            return max(1, count)
+        return 1
+
+    def _connect_dynamic_style_tracking(self, layer):
+        if layer is None:
+            return
+        try:
+            layer_id = layer.id()
+            if layer_id in self._dynamic_style_callbacks:
+                return
+
+            def callback(*_args):
+                self._on_dynamic_layer_style_changed(layer_id)
+
+            layer.styleChanged.connect(callback)
+            self._dynamic_style_callbacks[layer_id] = (layer, callback)
+        except Exception:
+            pass
+
+    def _disconnect_dynamic_style_tracking(self, layer):
+        if layer is None:
+            return
+        try:
+            layer_id = layer.id()
+        except Exception:
+            return
+        record = self._dynamic_style_callbacks.pop(layer_id, None)
+        if record is not None:
+            try:
+                record[0].styleChanged.disconnect(record[1])
+            except Exception:
+                pass
+
+    def _on_project_layers_will_be_removed(self, layer_ids):
+        if isinstance(layer_ids, str):
+            layer_ids = [layer_ids]
+        for layer_id in layer_ids or []:
+            try:
+                layer = QgsProject.instance().mapLayer(str(layer_id))
+                self._save_dynamic_style_before_removal(layer)
+                self._disconnect_dynamic_style_tracking(layer)
+            except Exception:
+                pass
+
+    def disconnect_project_signals(self):
+        if self._project_removal_signal_connected:
+            try:
+                QgsProject.instance().layersWillBeRemoved.disconnect(self._on_project_layers_will_be_removed)
+            except Exception:
+                pass
+            self._project_removal_signal_connected = False
+        for group, callback in self._layer_tree_group_callbacks:
+            try:
+                group.addedChildren.disconnect(callback)
+            except Exception:
+                pass
+        self._layer_tree_group_callbacks.clear()
+        self._layer_tree_root = None
+
+    def _on_dynamic_layer_style_changed(self, layer_id: str):
+        if self._style_update_guard:
+            return
+        try:
+            layer = QgsProject.instance().mapLayer(layer_id)
+            if layer is None or not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+                return
+            if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
+                return
+            root = QgsProject.instance().layerTreeRoot()
+            self._repair_duplicate_group_ids(root)
+            origin_uuid = str(layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or "").strip()
+            group = DynamicLayerFactory.find_group_by_layer_slider_uuid(root, origin_uuid)
+            if group is not None:
+                DynamicLayerStyle.capture_manual_changes(group, layer, save_snapshot=True)
+        except Exception:
+            traceback.print_exc()
+
+    def _apply_dynamic_layer_style(
+        self,
+        layer: QgsRasterLayer,
+        group: QgsLayerTreeGroup,
+        source_layer: QgsRasterLayer,
+        num_layers: int,
+        capture_current: bool,
+        restore_snapshot: bool = False,
+    ):
+        self._style_update_guard += 1
+        try:
+            DynamicLayerStyle.apply(
+                group,
+                layer,
+                source_layer,
+                contrast_offset=self._compute_compose_contrast(num_layers),
+                canvas_extent=self.dock.iface.mapCanvas().extent(),
+                restore_snapshot=restore_snapshot,
+                capture_current=capture_current,
+            )
+        finally:
+            self._style_update_guard -= 1
+
+    def reset_dynamic_layer_style(self, layer: QgsRasterLayer) -> bool:
+        if not layer or not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+            return False
+        if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
+            return False
+        origin_uuid = str(layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or "").strip()
+        root = QgsProject.instance().layerTreeRoot()
+        self._repair_duplicate_group_ids(root)
+        group = DynamicLayerFactory.find_group_by_layer_slider_uuid(root, origin_uuid)
+        source = self._first_raster_in_group(group)
+        if group is None or source is None:
+            return False
+        DynamicLayerStyle.clear_overrides(group)
+        self._apply_dynamic_layer_style(
+            layer,
+            group,
+            source,
+            self._dynamic_layer_count(layer, group),
+            capture_current=False,
+        )
+        self.dock.iface.layerTreeView().refreshLayerSymbology(layer.id())
+        self.dock.iface.mapCanvas().refresh()
+        return True
 
     def dynamic_node_defined(self) -> bool:
         return self.dynamic_node is not None
@@ -157,6 +432,9 @@ class ComposeManager:
                 except Exception:
                     continue
         if layer_id:
+            layer = QgsProject.instance().mapLayer(layer_id)
+            self._save_dynamic_style_before_removal(layer)
+            self._disconnect_dynamic_style_tracking(layer)
             try:
                 QgsProject.instance().removeMapLayer(layer_id)
                 removed = True
@@ -170,6 +448,21 @@ class ComposeManager:
                 except Exception:
                     pass
         return removed
+
+    def _save_dynamic_style_before_removal(self, layer):
+        try:
+            if layer is None or not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+                return
+            if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
+                return
+            origin_uuid = str(layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or "").strip()
+            root = QgsProject.instance().layerTreeRoot()
+            self._repair_duplicate_group_ids(root)
+            group = DynamicLayerFactory.find_group_by_layer_slider_uuid(root, origin_uuid)
+            if group is not None:
+                DynamicLayerStyle.capture_manual_changes(group, layer, save_snapshot=True)
+        except Exception:
+            traceback.print_exc()
 
     def remove_dynamic_node_for_origin_uuid(self, origin_uuid: Optional[str]) -> bool:
         if not origin_uuid or not str(origin_uuid).strip():
@@ -222,6 +515,9 @@ class ComposeManager:
             self.dock.update_lock -= 1
 
     def detach_dynamic_node(self):
+        for layer, _callback in list(self._dynamic_style_callbacks.values()):
+            self._save_dynamic_style_before_removal(layer)
+            self._disconnect_dynamic_style_tracking(layer)
         self._dynamic_nodes.clear()
 
     def remove_canonical_dynamics_with_missing_origin(self):
@@ -255,6 +551,8 @@ class ComposeManager:
 
         for layer in layers_to_remove:
             try:
+                self._save_dynamic_style_before_removal(layer)
+                self._disconnect_dynamic_style_tracking(layer)
                 project.removeMapLayer(layer.id())
             except Exception:
                 pass
@@ -268,6 +566,8 @@ class ComposeManager:
             if is_dynamic and layer.id() == original_id:
                 layers_to_remove.append(layer)
         for layer in layers_to_remove:
+            self._save_dynamic_style_before_removal(layer)
+            self._disconnect_dynamic_style_tracking(layer)
             project.removeMapLayer(layer.id())
 
     def remove_all_canonical_dynamic_layers(self):
@@ -275,55 +575,142 @@ class ComposeManager:
         self.detach_dynamic_node()
         self.remove_stale_dynamic_layers()
 
-    def _insert_dynamic_layer_from_cached_path(self, cached_path: str, name: str, num_layers: int):
-        dynamic_layer = DynamicLayerFactory.layer_from_cached_path(cached_path, name)
-        self._insert_dynamic_layer(dynamic_layer, num_layers)
-
-    def _insert_dynamic_layer(self, dynamic_layer: QgsRasterLayer, num_layers: int):
-        origin_uid = None
-        if isinstance(self.dock.current_group_node, QgsLayerTreeGroup):
+    def _find_canonical_dynamic_layer(self, origin_uuid: str) -> Optional[QgsRasterLayer]:
+        for layer in QgsProject.instance().mapLayers().values():
             try:
-                origin_uid = DynamicLayerFactory.ensure_layer_slider_group_uuid(self.dock.current_group_node)
-                dynamic_layer.setCustomProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, origin_uid)
+                if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
+                    continue
+                if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
+                    continue
+                if str(layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or "").strip() == origin_uuid:
+                    return layer
             except Exception:
-                pass
-        if origin_uid:
-            self.remove_dynamic_node_for_origin_uuid(origin_uid)
+                continue
+        return None
+
+    def _insert_dynamic_layer_from_cached_path(
+        self,
+        cached_path: str,
+        name: str,
+        num_layers: int,
+        source_layer: Optional[QgsRasterLayer] = None,
+    ):
+        group = self.dock.current_group_node
+        origin_uid = None
+        if isinstance(group, QgsLayerTreeGroup):
+            root = QgsProject.instance().layerTreeRoot()
+            current_uuid = DynamicLayerFactory.layer_slider_group_uuid(group)
+            origin_uid = DynamicLayerFactory.ensure_unique_layer_slider_group_uuid(
+                group,
+                root,
+                self._origin_group_nodes.get(current_uuid),
+            )
+            self._origin_group_nodes[origin_uid] = group
+        source_layer = self._first_raster_in_group(group) or source_layer
+
+        dynamic_layer = self._find_canonical_dynamic_layer(origin_uid) if origin_uid else None
+        is_new_layer = dynamic_layer is None
+        if is_new_layer:
+            dynamic_layer = DynamicLayerFactory.layer_from_cached_path(cached_path, name)
         else:
-            self.remove_dynamic_node()
+            if isinstance(group, QgsLayerTreeGroup):
+                DynamicLayerStyle.capture_manual_changes(group, dynamic_layer, save_snapshot=True)
+            try:
+                options = QgsDataProvider.ProviderOptions()
+            except Exception:
+                options = None
+            self._style_update_guard += 1
+            try:
+                if options is not None:
+                    try:
+                        dynamic_layer.setDataSource(cached_path, name, "gdal", options, False)
+                    except TypeError:
+                        dynamic_layer.setDataSource(cached_path, name, "gdal", False)
+                else:
+                    dynamic_layer.setDataSource(cached_path, name, "gdal", False)
+                if not dynamic_layer.isValid():
+                    raise RuntimeError(f"Could not update composed raster source: {cached_path}")
+            except Exception:
+                traceback.print_exc()
+                self._save_dynamic_style_before_removal(dynamic_layer)
+                self._disconnect_dynamic_style_tracking(dynamic_layer)
+                QgsProject.instance().removeMapLayer(dynamic_layer.id())
+                dynamic_layer = DynamicLayerFactory.layer_from_cached_path(cached_path, name)
+                is_new_layer = True
+            finally:
+                self._style_update_guard -= 1
 
-        contrast_filter = QgsBrightnessContrastFilter()
-        contrast_filter.setContrast(self._compute_compose_contrast(num_layers))
-        dynamic_layer.pipe().set(contrast_filter)
-
-        node = QgsLayerTreeLayer(dynamic_layer)
-        node.setExpanded(False)
+        dynamic_layer.setName(name)
+        dynamic_layer.setCustomProperty(DynamicLayerFactory.CUSTOM_PROPERTY, True)
+        dynamic_layer.setCustomProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, dynamic_layer.id())
+        dynamic_layer.setCustomProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, origin_uid or "")
+        dynamic_layer.setCustomProperty(DynamicLayerFactory.LAYER_COUNT_PROPERTY, int(num_layers))
 
         parent_group = QgsProject.instance().layerTreeRoot()
         index = 0
-        if self.dock.current_group_node:
-            parent = self.dock.current_group_node.parent()
+        if group:
+            parent = group.parent()
             if isinstance(parent, QgsLayerTreeGroup):
                 parent_group = parent
                 try:
-                    index = parent.children().index(self.dock.current_group_node)
+                    index = parent.children().index(group)
                 except Exception:
                     index = 0
 
         self.dock.update_lock += 1
         try:
-            QgsProject.instance().addMapLayer(dynamic_layer, addToLegend=False)
-
+            if is_new_layer:
+                QgsProject.instance().addMapLayer(dynamic_layer, addToLegend=False)
             root = QgsProject.instance().layerTreeRoot()
-            canonical = root.findLayer(dynamic_layer.id())
-            node_to_insert = canonical if canonical is not None else node
-
-            try:
-                parent_group.insertChildNode(index, node_to_insert)
-            except Exception:
-                parent_group.addChildNode(node_to_insert)
-
+            node_to_insert = root.findLayer(dynamic_layer.id())
+            if node_to_insert is None:
+                node_to_insert = QgsLayerTreeLayer(dynamic_layer)
+                node_to_insert.setExpanded(False)
+                try:
+                    parent_group.insertChildNode(index, node_to_insert)
+                except Exception:
+                    parent_group.addChildNode(node_to_insert)
+            else:
+                node_parent = node_to_insert.parent()
+                node_index = node_parent.children().index(node_to_insert) if node_parent else -1
+                group_index = (
+                    parent_group.children().index(group)
+                    if isinstance(group, QgsLayerTreeGroup) and group is not parent_group
+                    else -1
+                )
+                needs_move = node_parent != parent_group
+                if not isinstance(group, QgsLayerTreeGroup) or group is parent_group:
+                    needs_move = needs_move or node_index != 0
+                else:
+                    needs_move = needs_move or node_index != group_index - 1
+                if needs_move:
+                    moved_node = node_to_insert.clone()
+                    if node_parent is not None:
+                        node_parent.removeChildNode(node_to_insert)
+                    if isinstance(group, QgsLayerTreeGroup) and group is not parent_group:
+                        index = parent_group.children().index(group)
+                    else:
+                        index = 0
+                    try:
+                        parent_group.insertChildNode(index, moved_node)
+                    except Exception:
+                        parent_group.addChildNode(moved_node)
+                    node_to_insert = moved_node
             node_to_insert.setItemVisibilityChecked(True)
+            if origin_uid and isinstance(group, QgsLayerTreeGroup) and source_layer is not None:
+                self._apply_dynamic_layer_style(
+                    dynamic_layer,
+                    group,
+                    source_layer,
+                    num_layers,
+                    capture_current=False,
+                    restore_snapshot=is_new_layer,
+                )
+            dynamic_layer.setCustomProperty(DynamicLayerFactory.CUSTOM_PROPERTY, True)
+            dynamic_layer.setCustomProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, dynamic_layer.id())
+            dynamic_layer.setCustomProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, origin_uid or "")
+            dynamic_layer.setCustomProperty(DynamicLayerFactory.LAYER_COUNT_PROPERTY, int(num_layers))
+            self._connect_dynamic_style_tracking(dynamic_layer)
             self.dock.iface.layerTreeView().refreshLayerSymbology(dynamic_layer.id())
             self.dock.iface.mapCanvas().refresh()
             if origin_uid:
@@ -335,7 +722,9 @@ class ComposeManager:
         operation = GlobalSettings.getComposeOperation()
         name = self._compose_layer_name(raster_layers, operation)
         cached_path = DynamicLayerFactory.compute_or_get_cached_path(raster_layers, operation=operation)
-        self._insert_dynamic_layer_from_cached_path(cached_path, name, len(raster_layers))
+        self._insert_dynamic_layer_from_cached_path(
+            cached_path, name, len(raster_layers), raster_layers[0] if raster_layers else None
+        )
 
     # ------------------------------------------------------------------
     # Compose naming helpers
@@ -447,6 +836,7 @@ class ComposeManager:
                 request["cached_path"],
                 request["name"],
                 request["num_layers"],
+                request["layers"][0] if request.get("layers") else None,
             )
             self.dock._update_label_only(request["slider_idx"])
             self.dock.update_btn_reset_text()
