@@ -9,10 +9,10 @@ It is designed for any workflow where you need to flip through a sequence of lay
 
 Install directly via the [QGIS plugin repository](https://plugins.qgis.org/plugins/layer_slider/) in QGIS under `Plugins > Manage and Install Plugins... > All` and search for `Layer Slider`.
 
-Developed by Maximilian Obermayer.
+Developed by Maximilian Obermayer with AI-assistance.
 For collaboration and research- or software-related inquiries, visit my homepage [mobermayer.at](https://mobermayer.at).
 For issues regarding the Layer Slider, please use the [issue tracker](https://github.com/mobermayer/layer-slider/issues).
-If you use Layer Slider in your academic work, please cite it:
+If you use Layer Slider in your academic or other published work, please cite it:
 
 > Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.2.0). Zenodo. https://doi.org/10.5281/zenodo.20597604 . Available at https://github.com/mobermayer/layer-slider
 
