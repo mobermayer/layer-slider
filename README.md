@@ -1,4 +1,4 @@
-# Layer Slider – QGIS Plugin [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19341475.svg)](https://doi.org/10.5281/zenodo.19341475)
+# Layer Slider – QGIS Plugin [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19341475.svg)](https://doi.org/10.5281/zenodo.19341475) [![QGIS](https://img.shields.io/badge/QGIS-Layer%20Slider-589632)](https://plugins.qgis.org/plugins/layer_slider/)
 
 <p align="center">
   <img src="assets/icon.svg" alt="Layer Slider plugin icon" width="72" height="72" />
