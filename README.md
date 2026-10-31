@@ -103,12 +103,12 @@ Install directly via the [QGIS plugin repository](https://plugins.qgis.org/plugi
 
 > **Note:** You will **not** receive automatic updates in the Plugin Manager; upgrade by downloading a newer release ZIP and installing it again (or switch to the [repository install](#from-the-qgis-plugin-repository-recommended) for updates).
 
-## Development
-
 ### Prerequisites
 
 - QGIS 4.x or QGIS 3.6+ (3.28 LTS or newer recommended)
 - Python 3.10+
+
+## Development
 
 ### Local setup
 
@@ -173,6 +173,9 @@ After saving a form in Qt 6 Designer, search `.ui` files for `\w+::\w+::` and st
 
 Use this checklist so the plugin version, citations, and published artifacts stay in sync.
 
+<details>
+<summary>Checklist</summary>
+
 #### 1. Version and changelog
 
 - Bump `version=` in [`metadata.txt`](metadata.txt) (this value drives `./scripts/build.sh` and the QGIS Plugin Manager)
@@ -227,6 +230,8 @@ Commit the release and push it to GitHub.
 - Manually upload the same `layer_slider-<version>.zip` and `layer_slider-<version>.zip.md5` to the draft
 - Check the preview for correctness
 - Publish the record
+
+</details>
 
 ## Changelog
 
