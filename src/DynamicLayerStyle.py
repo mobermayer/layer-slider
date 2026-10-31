@@ -19,6 +19,8 @@ from qgis.core import (
     QgsSingleBandGrayRenderer,
 )
 
+from .GlobalSettings import GlobalSettings
+
 
 class DynamicLayerStyle:
     GROUP_STATE_PROPERTY = "layerslider/dynamic_style_state_v1"
@@ -536,7 +538,13 @@ class DynamicLayerStyle:
                 pass
 
     @staticmethod
-    def _source_profile(source_layer: QgsRasterLayer, composed_layer: QgsRasterLayer, contrast_offset: int, canvas_extent=None) -> dict:
+    def _source_profile(
+        source_layer: QgsRasterLayer,
+        composed_layer: QgsRasterLayer,
+        contrast_offset: int,
+        canvas_extent=None,
+        brightness_offset: int = 0,
+    ) -> dict:
         profile = {}
         source_renderer = source_layer.renderer()
         if source_renderer is not None:
@@ -571,7 +579,13 @@ class DynamicLayerStyle:
 
         brightness = source_layer.pipe().brightnessFilter()
         if brightness is not None:
-            profile["brightness"] = int(brightness.brightness())
+            profile["brightness"] = max(
+                GlobalSettings.COMPOSE_BRIGHTNESS_MIN,
+                min(
+                    GlobalSettings.COMPOSE_BRIGHTNESS_MAX,
+                    int(brightness.brightness()) + brightness_offset,
+                ),
+            )
             profile["contrast"] = max(-100, min(100, int(brightness.contrast()) + contrast_offset))
             profile["gamma"] = float(brightness.gamma())
             profile["brightness_on"] = bool(brightness.on())
@@ -662,6 +676,7 @@ class DynamicLayerStyle:
         restore_snapshot: bool = False,
         capture_current: bool = True,
         canvas_crs=None,
+        brightness_offset: int = 0,
     ) -> dict:
         if capture_current:
             state = DynamicLayerStyle.capture_manual_changes(group, composed_layer, save_snapshot=True)
@@ -675,7 +690,11 @@ class DynamicLayerStyle:
 
         # The plugin identity belongs to the canonical layer and must survive style restores.
         baseline = DynamicLayerStyle._source_profile(
-            source_layer, composed_layer, contrast_offset, canvas_extent
+            source_layer,
+            composed_layer,
+            contrast_offset,
+            canvas_extent,
+            brightness_offset,
         )
         overrides = state.get("overrides", {})
         for key, value in baseline.items():

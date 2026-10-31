@@ -8,6 +8,15 @@ class GlobalSettings():
     PREFIX = 'LayerSelector'
     PLUGIN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     DEFAULT_CACHE_DIR = os.path.join(PLUGIN_DIR, ".cache")
+    COMPOSE_CONTRAST_N_MIN = -50
+    COMPOSE_CONTRAST_N_MAX = 50
+    COMPOSE_CONTRAST_VALUE_MIN = -100
+    COMPOSE_CONTRAST_VALUE_MAX = 100
+    COMPOSE_BRIGHTNESS_MIN = -255
+    COMPOSE_BRIGHTNESS_MAX = 255
+    COMPOSE_BRIGHTNESS_FACTOR_MIN = -10.0
+    COMPOSE_BRIGHTNESS_FACTOR_MAX = 10.0
+    COMPOSE_BRIGHTNESS_FACTOR_STEP = 0.1
     COMPOSE_OPERATIONS = (
         ("mean", "Mean", "Arithmetic Mean"),
         ("min", "Min", "Minimum"),
@@ -296,30 +305,84 @@ class GlobalSettings():
 
     @classmethod
     def getComposeContrastMode(cls) -> str:
-        mode = QSettings().value(f"{cls.PREFIX}/compose_contrast_mode", "auto", str)
+        mode = QSettings().value(f"{cls.PREFIX}/compose_contrast_mode", "constant", str)
         if mode in {"auto", "constant"}:
             return mode
-        return "auto"
+        return "constant"
 
     @classmethod
     def setComposeContrastMode(cls, value: Optional[str]):
         if value in {"auto", "constant"}:
             QSettings().setValue(f"{cls.PREFIX}/compose_contrast_mode", value)
         else:
-            QSettings().setValue(f"{cls.PREFIX}/compose_contrast_mode", "auto")
+            QSettings().setValue(f"{cls.PREFIX}/compose_contrast_mode", "constant")
 
     @classmethod
     def getComposeContrastN(cls) -> int:
-        return QSettings().value(f"{cls.PREFIX}/compose_contrast_n", 5, int)
+        value = QSettings().value(f"{cls.PREFIX}/compose_contrast_n", 5, int)
+        return max(cls.COMPOSE_CONTRAST_N_MIN, min(cls.COMPOSE_CONTRAST_N_MAX, value))
 
     @classmethod
     def setComposeContrastN(cls, value: Optional[int]):
-        QSettings().setValue(f"{cls.PREFIX}/compose_contrast_n", value)
+        value = 5 if value is None else int(value)
+        QSettings().setValue(
+            f"{cls.PREFIX}/compose_contrast_n",
+            max(cls.COMPOSE_CONTRAST_N_MIN, min(cls.COMPOSE_CONTRAST_N_MAX, value)),
+        )
 
     @classmethod
     def getComposeContrastValue(cls) -> int:
-        return QSettings().value(f"{cls.PREFIX}/compose_contrast_value", 0, int)
+        value = QSettings().value(f"{cls.PREFIX}/compose_contrast_value", 0, int)
+        return max(cls.COMPOSE_CONTRAST_VALUE_MIN, min(cls.COMPOSE_CONTRAST_VALUE_MAX, value))
 
     @classmethod
     def setComposeContrastValue(cls, value: Optional[int]):
-        QSettings().setValue(f"{cls.PREFIX}/compose_contrast_value", value)
+        value = 0 if value is None else int(value)
+        QSettings().setValue(
+            f"{cls.PREFIX}/compose_contrast_value",
+            max(cls.COMPOSE_CONTRAST_VALUE_MIN, min(cls.COMPOSE_CONTRAST_VALUE_MAX, value)),
+        )
+
+    @classmethod
+    def getComposeBrightnessValue(cls) -> int:
+        value = QSettings().value(f"{cls.PREFIX}/compose_brightness_value", 0, int)
+        return max(cls.COMPOSE_BRIGHTNESS_MIN, min(cls.COMPOSE_BRIGHTNESS_MAX, value))
+
+    @classmethod
+    def setComposeBrightnessValue(cls, value: Optional[int]):
+        value = 0 if value is None else int(value)
+        QSettings().setValue(
+            f"{cls.PREFIX}/compose_brightness_value",
+            max(cls.COMPOSE_BRIGHTNESS_MIN, min(cls.COMPOSE_BRIGHTNESS_MAX, value)),
+        )
+
+    @classmethod
+    def getComposeBrightnessMode(cls) -> str:
+        mode = QSettings().value(f"{cls.PREFIX}/compose_brightness_mode", "constant", str)
+        return mode if mode in {"constant", "dynamic"} else "constant"
+
+    @classmethod
+    def setComposeBrightnessMode(cls, value: Optional[str]):
+        QSettings().setValue(
+            f"{cls.PREFIX}/compose_brightness_mode",
+            value if value in {"constant", "dynamic"} else "constant",
+        )
+
+    @classmethod
+    def getComposeBrightnessFactor(cls) -> float:
+        value = QSettings().value(f"{cls.PREFIX}/compose_brightness_factor", -2.0, float)
+        return max(
+            cls.COMPOSE_BRIGHTNESS_FACTOR_MIN,
+            min(cls.COMPOSE_BRIGHTNESS_FACTOR_MAX, value),
+        )
+
+    @classmethod
+    def setComposeBrightnessFactor(cls, value: Optional[float]):
+        value = -2.0 if value is None else round(float(value), 1)
+        QSettings().setValue(
+            f"{cls.PREFIX}/compose_brightness_factor",
+            max(
+                cls.COMPOSE_BRIGHTNESS_FACTOR_MIN,
+                min(cls.COMPOSE_BRIGHTNESS_FACTOR_MAX, value),
+            ),
+        )

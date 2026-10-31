@@ -389,11 +389,13 @@ class ComposeManager:
         self._style_update_guard += 1
         try:
             canvas = self.dock.iface.mapCanvas()
+            contrast_offset = self._compute_compose_contrast(num_layers)
             DynamicLayerStyle.apply(
                 group,
                 layer,
                 source_layer,
-                contrast_offset=self._compute_compose_contrast(num_layers),
+                contrast_offset=contrast_offset,
+                brightness_offset=self._compute_compose_brightness(contrast_offset),
                 canvas_extent=canvas.extent(),
                 canvas_crs=canvas.mapSettings().destinationCrs(),
                 restore_snapshot=restore_snapshot,
@@ -755,8 +757,26 @@ class ComposeManager:
             contrast = GlobalSettings.getComposeContrastValue()
         else:
             n = GlobalSettings.getComposeContrastN()
-            contrast = n * max(0, num_layers - 1)
+            additional_layers = max(0, num_layers - 1)
+            scaled_n = n * additional_layers
+            contrast = round(100 * scaled_n / (100 + abs(scaled_n)))
         return max(-100, min(100, contrast))
+
+    @staticmethod
+    def _compute_compose_brightness(contrast_offset: int) -> int:
+        if GlobalSettings.getComposeBrightnessMode() == "dynamic":
+            scaled_brightness = contrast_offset * GlobalSettings.getComposeBrightnessFactor()
+            brightness_offset = int(
+                scaled_brightness + 0.5
+                if scaled_brightness >= 0
+                else scaled_brightness - 0.5
+            )
+        else:
+            brightness_offset = GlobalSettings.getComposeBrightnessValue()
+        return max(
+            GlobalSettings.COMPOSE_BRIGHTNESS_MIN,
+            min(GlobalSettings.COMPOSE_BRIGHTNESS_MAX, brightness_offset),
+        )
 
     # ------------------------------------------------------------------
     # Single compose request lifecycle

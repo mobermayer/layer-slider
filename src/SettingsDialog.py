@@ -6,6 +6,7 @@ from qgis.PyQt.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QDoubleSpinBox,
     QFileDialog,
     QLineEdit,
     QMessageBox,
@@ -31,6 +32,10 @@ class SettingsDialog(QDialog, FORM_CLASS):
     spin_dynamic_n: QSpinBox
     radio_constant: QRadioButton
     spin_constant: QSpinBox
+    radio_brightness_constant: QRadioButton
+    spin_brightness_value: QSpinBox
+    radio_brightness_dynamic: QRadioButton
+    spin_brightness_factor: QDoubleSpinBox
     combo_output_datatype: QComboBox
     edit_cache_dir: QLineEdit
     btn_select_cache_dir: QPushButton
@@ -47,14 +52,44 @@ class SettingsDialog(QDialog, FORM_CLASS):
         self.setWindowModality(Qt.WindowModality.NonModal)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
 
+        self.spin_dynamic_n.setRange(
+            GlobalSettings.COMPOSE_CONTRAST_N_MIN,
+            GlobalSettings.COMPOSE_CONTRAST_N_MAX,
+        )
+        self.spin_constant.setRange(
+            GlobalSettings.COMPOSE_CONTRAST_VALUE_MIN,
+            GlobalSettings.COMPOSE_CONTRAST_VALUE_MAX,
+        )
+        self.spin_brightness_value.setRange(
+            GlobalSettings.COMPOSE_BRIGHTNESS_MIN,
+            GlobalSettings.COMPOSE_BRIGHTNESS_MAX,
+        )
+        self.spin_brightness_factor.setRange(
+            GlobalSettings.COMPOSE_BRIGHTNESS_FACTOR_MIN,
+            GlobalSettings.COMPOSE_BRIGHTNESS_FACTOR_MAX,
+        )
+        self.spin_brightness_factor.setSingleStep(
+            GlobalSettings.COMPOSE_BRIGHTNESS_FACTOR_STEP
+        )
+        self.spin_brightness_factor.setDecimals(1)
+
         self.edit_cache_dir.setPlaceholderText(GlobalSettings.DEFAULT_CACHE_DIR)
         self.btn_open_cache_dir.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
+
+        contrast_tooltip = self.spin_dynamic_n.toolTip()
+        self.radio_dynamic.setToolTip(contrast_tooltip)
+        self.label_dynamic_n.setToolTip(contrast_tooltip)
+        brightness_tooltip = self.spin_brightness_factor.toolTip()
+        self.radio_brightness_dynamic.setToolTip(brightness_tooltip)
+        self.label_brightness_factor.setToolTip(brightness_tooltip)
 
         for key, label in GlobalSettings.getComposeOutputDatatypeOptions():
             self.combo_output_datatype.addItem(label, key)
 
         self.radio_dynamic.toggled.connect(self._on_contrast_mode_toggled)
         self.radio_constant.toggled.connect(self._on_contrast_mode_toggled)
+        self.radio_brightness_dynamic.toggled.connect(self._on_brightness_mode_toggled)
+        self.radio_brightness_constant.toggled.connect(self._on_brightness_mode_toggled)
         self.btn_select_cache_dir.clicked.connect(self._on_select_cache_dir_clicked)
         self.btn_open_cache_dir.clicked.connect(self._on_open_cache_dir_clicked)
         self.button_box.accepted.connect(self._on_save_clicked)
@@ -71,7 +106,13 @@ class SettingsDialog(QDialog, FORM_CLASS):
             self.radio_constant.setChecked(mode == "constant")
             self.spin_dynamic_n.setValue(GlobalSettings.getComposeContrastN())
             self.spin_constant.setValue(GlobalSettings.getComposeContrastValue())
+            brightness_mode = GlobalSettings.getComposeBrightnessMode()
+            self.radio_brightness_dynamic.setChecked(brightness_mode == "dynamic")
+            self.radio_brightness_constant.setChecked(brightness_mode == "constant")
+            self.spin_brightness_value.setValue(GlobalSettings.getComposeBrightnessValue())
+            self.spin_brightness_factor.setValue(GlobalSettings.getComposeBrightnessFactor())
             self._sync_contrast_inputs()
+            self._sync_brightness_inputs()
 
             idx = self.combo_output_datatype.findData(GlobalSettings.getComposeOutputDatatype())
             self.combo_output_datatype.setCurrentIndex(idx if idx >= 0 else 0)
@@ -91,6 +132,11 @@ class SettingsDialog(QDialog, FORM_CLASS):
         self.spin_dynamic_n.setEnabled(is_dynamic)
         self.spin_constant.setEnabled(not is_dynamic)
 
+    def _sync_brightness_inputs(self):
+        is_dynamic = self.radio_brightness_dynamic.isChecked()
+        self.spin_brightness_factor.setEnabled(is_dynamic)
+        self.spin_brightness_value.setEnabled(not is_dynamic)
+
     def _normalize_cache_dir(self, value: str) -> str:
         normalized = value.strip() if isinstance(value, str) else ""
         if not normalized:
@@ -102,6 +148,11 @@ class SettingsDialog(QDialog, FORM_CLASS):
             "compose_contrast_mode": "auto" if self.radio_dynamic.isChecked() else "constant",
             "compose_contrast_n": int(self.spin_dynamic_n.value()),
             "compose_contrast_value": int(self.spin_constant.value()),
+            "compose_brightness_mode": (
+                "dynamic" if self.radio_brightness_dynamic.isChecked() else "constant"
+            ),
+            "compose_brightness_value": int(self.spin_brightness_value.value()),
+            "compose_brightness_factor": float(self.spin_brightness_factor.value()),
             "compose_output_datatype": self.combo_output_datatype.currentData(),
             "cache_directory": self._normalize_cache_dir(self.edit_cache_dir.text()),
             "max_cache_mb": int(self.spin_cache_mb.value()),
@@ -112,6 +163,9 @@ class SettingsDialog(QDialog, FORM_CLASS):
             "compose_contrast_mode": GlobalSettings.getComposeContrastMode(),
             "compose_contrast_n": int(GlobalSettings.getComposeContrastN()),
             "compose_contrast_value": int(GlobalSettings.getComposeContrastValue()),
+            "compose_brightness_mode": GlobalSettings.getComposeBrightnessMode(),
+            "compose_brightness_value": int(GlobalSettings.getComposeBrightnessValue()),
+            "compose_brightness_factor": float(GlobalSettings.getComposeBrightnessFactor()),
             "compose_output_datatype": GlobalSettings.getComposeOutputDatatype(),
             "cache_directory": self._normalize_cache_dir(GlobalSettings.getCacheDirectory()),
             "max_cache_mb": int(GlobalSettings.getMaxCacheMB()),
@@ -119,6 +173,9 @@ class SettingsDialog(QDialog, FORM_CLASS):
 
     def _on_contrast_mode_toggled(self, _checked: bool):
         self._sync_contrast_inputs()
+
+    def _on_brightness_mode_toggled(self, _checked: bool):
+        self._sync_brightness_inputs()
 
     def _on_select_cache_dir_clicked(self):
         start_dir = self._normalize_cache_dir(self.edit_cache_dir.text())
@@ -148,6 +205,9 @@ class SettingsDialog(QDialog, FORM_CLASS):
         GlobalSettings.setComposeContrastMode(current_values["compose_contrast_mode"])
         GlobalSettings.setComposeContrastN(current_values["compose_contrast_n"])
         GlobalSettings.setComposeContrastValue(current_values["compose_contrast_value"])
+        GlobalSettings.setComposeBrightnessMode(current_values["compose_brightness_mode"])
+        GlobalSettings.setComposeBrightnessValue(current_values["compose_brightness_value"])
+        GlobalSettings.setComposeBrightnessFactor(current_values["compose_brightness_factor"])
         GlobalSettings.setComposeOutputDatatype(current_values["compose_output_datatype"])
         GlobalSettings.setCacheDirectory(current_values["cache_directory"])
         GlobalSettings.setMaxCacheMB(current_values["max_cache_mb"])

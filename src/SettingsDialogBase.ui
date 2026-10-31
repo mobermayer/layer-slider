@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>398</width>
-    <height>249</height>
+    <height>280</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -40,45 +40,42 @@
       <property name="bottomMargin">
        <number>0</number>
       </property>
-      <item row="0" column="0">
+      <item row="1" column="0">
        <widget class="QRadioButton" name="radio_dynamic">
         <property name="text">
-         <string>Dynamic: N × (layers − 1)</string>
+         <string>Dynamic: 100 × (N × m) / (100 + |N × m|)</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
+      <item row="1" column="1">
        <widget class="QLabel" name="label_dynamic_n">
         <property name="text">
          <string>N</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="2">
+      <item row="1" column="2">
        <widget class="QSpinBox" name="spin_dynamic_n">
         <property name="toolTip">
-         <string>Contrast = N × (number of composed layers − 1)</string>
-        </property>
-        <property name="maximum">
-         <number>50</number>
+         <string>m = number of composed layers − 1. Contrast offset C(m) = 100 × (N × m) / (100 + |N × m|).</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
+      <item row="0" column="0">
        <widget class="QRadioButton" name="radio_constant">
         <property name="text">
          <string>Constant</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
+      <item row="0" column="1">
        <widget class="QLabel" name="label_constant_value">
         <property name="text">
          <string>Value</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="2">
+      <item row="0" column="2">
        <widget class="QSpinBox" name="spin_constant">
         <property name="toolTip">
          <string>Fixed contrast value applied to composed layers</string>
@@ -95,6 +92,74 @@
     </widget>
    </item>
    <item row="1" column="0">
+    <widget class="QLabel" name="label_brightness">
+     <property name="text">
+      <string>Brightness
+(Composed Layer)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QWidget" name="brightness_widget" native="true">
+     <layout class="QGridLayout" name="brightness_layout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QRadioButton" name="radio_brightness_constant">
+        <property name="text">
+         <string>Constant</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLabel" name="label_brightness_value">
+        <property name="text">
+         <string>Value</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QSpinBox" name="spin_brightness_value">
+        <property name="toolTip">
+         <string>Fixed brightness offset added to the first layer's brightness</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QRadioButton" name="radio_brightness_dynamic">
+        <property name="text">
+         <string>Dynamic: factor × Contrast</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLabel" name="label_brightness_factor">
+        <property name="text">
+         <string>Factor</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QDoubleSpinBox" name="spin_brightness_factor">
+        <property name="toolTip">
+         <string>Brightness offset = factor × the contrast offset: the fixed value in Constant mode or the calculated value in Dynamic mode.</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="2" column="0">
     <widget class="QLabel" name="label_output_datatype">
      <property name="text">
       <string>Output Datatype
@@ -102,17 +167,17 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="1">
+   <item row="2" column="1">
     <widget class="QComboBox" name="combo_output_datatype"/>
    </item>
-   <item row="2" column="0">
+   <item row="3" column="0">
     <widget class="QLabel" name="label_cache_dir">
      <property name="text">
       <string>Cache Directory</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
+   <item row="3" column="1">
     <widget class="QWidget" name="cache_dir_widget" native="true">
      <layout class="QHBoxLayout" name="cache_dir_layout">
       <property name="spacing">
@@ -160,14 +225,14 @@
      </layout>
     </widget>
    </item>
-   <item row="3" column="0">
+   <item row="4" column="0">
     <widget class="QLabel" name="label_cache_size">
      <property name="text">
       <string>Cache Size</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="1">
+   <item row="4" column="1">
     <widget class="QSpinBox" name="spin_cache_mb">
      <property name="suffix">
       <string> MB</string>
@@ -177,14 +242,14 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="0">
+   <item row="5" column="0">
     <widget class="QLabel" name="label_remove_composed">
      <property name="text">
       <string>Composed Layers</string>
      </property>
     </widget>
    </item>
-   <item row="4" column="1">
+   <item row="5" column="1">
     <widget class="QWidget" name="remove_composed_widget" native="true">
      <layout class="QVBoxLayout" name="remove_composed_layout">
       <property name="leftMargin">
@@ -212,7 +277,7 @@
      </layout>
     </widget>
    </item>
-   <item row="5" column="0" colspan="2">
+   <item row="6" column="0" colspan="2">
     <widget class="QDialogButtonBox" name="button_box">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>

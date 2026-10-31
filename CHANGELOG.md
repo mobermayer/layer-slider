@@ -1,5 +1,6 @@
 # Unreleased
 - Composed layers styling can be changed and is persisted, defaults to styling of first layer
+- Improve contrast calculation of composed layer and add brightness
 - Allow keyboard editing of compositing values
 - (Re-)activate the selected layer on slider-handle clicks and previous/next shortcuts
 
