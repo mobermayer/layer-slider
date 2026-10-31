@@ -1077,10 +1077,18 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
     def apply_visibility_from_index(self, idx: int):
         idx = self.limit_slider_index(idx)
 
-        if self._should_remove_tracked_dynamic_before_visibility_apply():
-            self.compose.remove_dynamic_node()
         if not self.group_layers:
+            if self._should_remove_tracked_dynamic_before_visibility_apply():
+                self.compose.remove_dynamic_node()
+            self.compose._desired_single_compose_cache_key = None
+            self.compose._pending_single_compose_request = None
             return
+
+        layer_ranges = self.get_layer_ranges()
+        selected_range = layer_ranges[idx] if 0 <= idx < len(layer_ranges) else []
+        will_compose = self.chk_avgrasters.isChecked() and len(selected_range) > 1
+        if not will_compose and self._should_remove_tracked_dynamic_before_visibility_apply():
+            self.compose.remove_dynamic_node()
 
         layers_to_average: List[QgsRasterLayer] = []
         visibility_changed = False
@@ -1094,7 +1102,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                 g.setItemVisibilityChecked(True)
                 g = g.parent()
 
-            for rangeIndex, layer_range in enumerate(self.get_layer_ranges()):
+            for rangeIndex, layer_range in enumerate(layer_ranges):
                 if rangeIndex == idx:
                     if len(layer_range) == 1:
                         for i in layer_range:
