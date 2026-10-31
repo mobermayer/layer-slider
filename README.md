@@ -19,8 +19,12 @@ If you use Layer Slider in your academic or other published work, please cite it
 ## Demo
 Basic demonstration with ground-penetrating radar depth slices:
 
-<!-- ![demo_v1_0_0.mp4](docs/demo_v1_0_0.mp4) -->
+![demo_v1_0_0_short.gif](docs/demo_v1_0_0_short.gif)
+
+<details>
+<summary>Extended demo</summary>
 https://github.com/user-attachments/assets/1ee1a25f-c6ae-4190-a5ee-4bfcf686bfbc
+</details>
 
 ## Example use cases
 
