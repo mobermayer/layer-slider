@@ -23,7 +23,11 @@ Basic demonstration with ground-penetrating radar depth slices:
 
 <details>
 <summary>Extended demo</summary>
+
+<!-- ![demo_v1_0_0.mp4](docs/demo_v1_0_0.mp4) -->
+
 https://github.com/user-attachments/assets/1ee1a25f-c6ae-4190-a5ee-4bfcf686bfbc
+
 </details>
 
 ## Example use cases
