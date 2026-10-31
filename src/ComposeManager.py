@@ -81,27 +81,50 @@ class ComposeManager:
         u = DynamicLayerFactory.layer_slider_group_uuid(g)
         return u if u else None
 
+    def _find_canonical_dynamic_layer(self, origin_uuid: str) -> Optional[QgsRasterLayer]:
+        key = str(origin_uuid).strip()
+        if not key:
+            return None
+
+        def matches_origin(layer) -> bool:
+            try:
+                is_dynamic = layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False)
+                is_original = layer.id() == layer.customProperty(
+                    DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None
+                )
+                layer_origin = str(
+                    layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
+                ).strip()
+                return is_dynamic and is_original and layer_origin == key
+            except Exception:
+                return False
+
+        node = self._dynamic_nodes.get(key)
+        if node is not None:
+            try:
+                layer = node.layer()
+                if matches_origin(layer):
+                    return layer
+            except Exception:
+                pass
+
+        for layer in QgsProject.instance().mapLayers().values():
+            if matches_origin(layer):
+                return layer
+        return None
+
     def _find_and_cache_dynamic_tree_node(self, origin_uuid: str) -> Optional[QgsLayerTreeLayer]:
         key = str(origin_uuid).strip()
         if not key:
             return None
-        project = QgsProject.instance()
-        root = project.layerTreeRoot()
-        for layer in project.mapLayers().values():
-            try:
-                if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
-                    continue
-                if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
-                    continue
-                ou = layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
-                if str(ou).strip() != key:
-                    continue
-                tnode = root.findLayer(layer.id())
-                if isinstance(tnode, QgsLayerTreeLayer):
-                    self._dynamic_nodes[key] = tnode
-                    return tnode
-            except Exception:
-                continue
+        layer = self._find_canonical_dynamic_layer(key)
+        if layer is None:
+            return None
+        tnode = QgsProject.instance().layerTreeRoot().findLayer(layer.id())
+        if isinstance(tnode, QgsLayerTreeLayer):
+            self._dynamic_nodes[key] = tnode
+            return tnode
+        self._dynamic_nodes.pop(key, None)
         return None
 
     @property
@@ -418,19 +441,9 @@ class ComposeManager:
             except Exception:
                 pass
         if layer_id is None:
-            for layer in QgsProject.instance().mapLayers().values():
-                try:
-                    if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
-                        continue
-                    if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
-                        continue
-                    ou = layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
-                    if str(ou).strip() != key:
-                        continue
-                    layer_id = layer.id()
-                    break
-                except Exception:
-                    continue
+            layer = self._find_canonical_dynamic_layer(key)
+            if layer is not None:
+                layer_id = layer.id()
         if layer_id:
             layer = QgsProject.instance().mapLayer(layer_id)
             self._save_dynamic_style_before_removal(layer)
@@ -479,23 +492,7 @@ class ComposeManager:
             self.remove_dynamic_node_for_origin_uuid(uid)
 
     def _origin_has_canonical_dynamic_layer(self, origin_uuid: str) -> bool:
-        key = str(origin_uuid).strip()
-        if not key:
-            return False
-        if key in self._dynamic_nodes:
-            return True
-        for layer in QgsProject.instance().mapLayers().values():
-            try:
-                if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
-                    continue
-                if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
-                    continue
-                ou = layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
-                if str(ou).strip() == key:
-                    return True
-            except Exception:
-                continue
-        return False
+        return self._find_canonical_dynamic_layer(origin_uuid) is not None
 
     def remove_dynamics_for_manual_visibility_on_node(self, node) -> bool:
         """Remove composed output for the innermost ancestor group (of node) that has one."""
@@ -574,19 +571,6 @@ class ComposeManager:
         """Remove every canonical plugin dynamic layer (duplicates preserved)."""
         self.detach_dynamic_node()
         self.remove_stale_dynamic_layers()
-
-    def _find_canonical_dynamic_layer(self, origin_uuid: str) -> Optional[QgsRasterLayer]:
-        for layer in QgsProject.instance().mapLayers().values():
-            try:
-                if not layer.customProperty(DynamicLayerFactory.CUSTOM_PROPERTY, False):
-                    continue
-                if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
-                    continue
-                if str(layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or "").strip() == origin_uuid:
-                    return layer
-            except Exception:
-                continue
-        return None
 
     def _insert_dynamic_layer_from_cached_path(
         self,
@@ -718,14 +702,6 @@ class ComposeManager:
         finally:
             self.dock.update_lock -= 1
 
-    def add_dynamic_layer(self, raster_layers: List[QgsRasterLayer]):
-        operation = GlobalSettings.getComposeOperation()
-        name = self._compose_layer_name(raster_layers, operation)
-        cached_path = DynamicLayerFactory.compute_or_get_cached_path(raster_layers, operation=operation)
-        self._insert_dynamic_layer_from_cached_path(
-            cached_path, name, len(raster_layers), raster_layers[0] if raster_layers else None
-        )
-
     # ------------------------------------------------------------------
     # Compose naming helpers
     # ------------------------------------------------------------------
@@ -780,30 +756,16 @@ class ComposeManager:
             contrast = n * max(0, num_layers - 1)
         return max(-100, min(100, contrast))
 
-    @staticmethod
-    def copy_raster_style(source_layer: QgsRasterLayer, target_layer: QgsRasterLayer):
-        try:
-            if not source_layer.isValid() or not target_layer.isValid():
-                raise ValueError("Both layers must be valid QgsRasterLayer instances")
-            target_layer.setRenderer(source_layer.renderer().clone())
-            for b in range(1, source_layer.bandCount() + 1):
-                try:
-                    nodata = source_layer.dataProvider().sourceNoDataValue(b)
-                    if nodata is not None:
-                        target_layer.dataProvider().setNoDataValue(b, nodata)
-                except Exception:
-                    pass
-            target_layer.triggerRepaint()
-        except Exception:
-            traceback.print_exc()
-
     # ------------------------------------------------------------------
     # Single compose request lifecycle
     # ------------------------------------------------------------------
-    def invalidate_single_compose_request(self, cancel_task: bool = False) -> int:
-        self._compose_request_token += 1
+    def clear_desired_single_compose_request(self):
         self._pending_single_compose_request = None
         self._desired_single_compose_cache_key = None
+
+    def invalidate_single_compose_request(self, cancel_task: bool = False) -> int:
+        self._compose_request_token += 1
+        self.clear_desired_single_compose_request()
         task = self._active_single_compose_task
         if cancel_task and task is not None and task.isActive():
             try:

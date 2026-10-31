@@ -1080,8 +1080,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if not self.group_layers:
             if self._should_remove_tracked_dynamic_before_visibility_apply():
                 self.compose.remove_dynamic_node()
-            self.compose._desired_single_compose_cache_key = None
-            self.compose._pending_single_compose_request = None
+            self.compose.clear_desired_single_compose_request()
             return
 
         layer_ranges = self.get_layer_ranges()
@@ -1138,8 +1137,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         if layers_to_average:
             self.compose.queue_single_compose_request(layers_to_average, idx)
         else:
-            self.compose._desired_single_compose_cache_key = None
-            self.compose._pending_single_compose_request = None
+            self.compose.clear_desired_single_compose_request()
 
     def repaint_safe(self, node_or_layer):
         if isinstance(node_or_layer, QgsMapLayer):
