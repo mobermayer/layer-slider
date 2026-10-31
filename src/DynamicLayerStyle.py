@@ -20,6 +20,16 @@ from qgis.core import (
 
 class DynamicLayerStyle:
     GROUP_STATE_PROPERTY = "layerslider/dynamic_style_state_v1"
+    PROVIDER_RESAMPLING_METHOD_VALUES = {
+        "nearest": 0,
+        "bilinear": 1,
+        "cubic": 2,
+        "cubicspline": 3,
+        "lanczos": 4,
+        "average": 5,
+        "mode": 6,
+        "gauss": 7,
+    }
     TRACKED_PROPERTIES = (
         "opacity",
         "renderer_opacity",
@@ -156,8 +166,19 @@ class DynamicLayerStyle:
     def _capture_resampling(layer: QgsRasterLayer) -> dict:
         pipe = layer.pipe()
         filter_ = pipe.resampleFilter()
-        if filter_ is None:
-            return {"on": True, "max_oversampling": 2.0, "zoomed_in": "nearest", "zoomed_out": "nearest"}
+        provider = layer.dataProvider()
+        stage = None
+        try:
+            stage = pipe.resamplingStage()
+        except Exception:
+            pass
+
+        values = {
+            "on": bool(filter_.on()) if filter_ is not None else True,
+            "max_oversampling": float(filter_.maxOversampling()) if filter_ is not None else 2.0,
+            "zoomed_in": "nearest",
+            "zoomed_out": "nearest",
+        }
 
         def _resampler_type(resampler):
             if resampler is None:
@@ -167,17 +188,59 @@ class DynamicLayerStyle:
             except Exception:
                 return resampler.__class__.__name__.lower()
 
-        values = {
-            "on": bool(filter_.on()),
-            "max_oversampling": float(filter_.maxOversampling()),
-            "zoomed_in": _resampler_type(filter_.zoomedInResampler()),
-            "zoomed_out": _resampler_type(filter_.zoomedOutResampler()),
-        }
+        if filter_ is not None:
+            values["zoomed_in"] = _resampler_type(filter_.zoomedInResampler())
+            values["zoomed_out"] = _resampler_type(filter_.zoomedOutResampler())
+
+        if DynamicLayerStyle._is_provider_resampling_stage(stage) and provider is not None:
+            try:
+                values["zoomed_in"] = DynamicLayerStyle._provider_resampling_method_name(
+                    provider.zoomedInResamplingMethod()
+                )
+            except Exception:
+                pass
+            try:
+                values["zoomed_out"] = DynamicLayerStyle._provider_resampling_method_name(
+                    provider.zoomedOutResamplingMethod()
+                )
+            except Exception:
+                pass
+            try:
+                values["max_oversampling"] = float(provider.maxOversampling())
+            except Exception:
+                pass
+
+        if stage is not None:
+            try:
+                values["stage"] = int(stage)
+            except Exception:
+                pass
+        return values
+
+    @staticmethod
+    def _is_provider_resampling_stage(stage) -> bool:
+        if stage is None:
+            return False
         try:
-            values["stage"] = int(pipe.resamplingStage())
+            return stage == Qgis.RasterResamplingStage.Provider
         except Exception:
             pass
-        return values
+        try:
+            return int(stage) == 1
+        except Exception:
+            return str(stage).lower().rsplit(".", 1)[-1] == "provider"
+
+    @staticmethod
+    def _provider_resampling_method_name(method) -> str:
+        try:
+            method_value = int(method)
+            return next(
+                name
+                for name, value in DynamicLayerStyle.PROVIDER_RESAMPLING_METHOD_VALUES.items()
+                if value == method_value
+            )
+        except Exception:
+            return "nearest"
 
     @staticmethod
     def _capture_hue_saturation(layer: QgsRasterLayer) -> dict:
@@ -409,6 +472,20 @@ class DynamicLayerStyle:
         return None
 
     @staticmethod
+    def _set_provider_resampling_method(provider, method_name: str, zoomed_in: bool):
+        getter_name = "zoomedInResamplingMethod" if zoomed_in else "zoomedOutResamplingMethod"
+        setter_name = "setZoomedInResamplingMethod" if zoomed_in else "setZoomedOutResamplingMethod"
+        method_value = DynamicLayerStyle.PROVIDER_RESAMPLING_METHOD_VALUES.get(
+            str(method_name or "nearest").lower().replace("_", ""), 0
+        )
+        try:
+            current_method = getattr(provider, getter_name)()
+            method = type(current_method)(method_value)
+            getattr(provider, setter_name)(method)
+        except Exception:
+            pass
+
+    @staticmethod
     def _apply_resampling(layer: QgsRasterLayer, value: dict):
         filter_ = QgsRasterResampleFilter()
         filter_.setOn(bool(value.get("on", True)))
@@ -416,6 +493,19 @@ class DynamicLayerStyle:
         filter_.setZoomedInResampler(DynamicLayerStyle._make_resampler(value.get("zoomed_in")))
         filter_.setZoomedOutResampler(DynamicLayerStyle._make_resampler(value.get("zoomed_out")))
         layer.pipe().set(filter_)
+        if DynamicLayerStyle._is_provider_resampling_stage(value.get("stage")):
+            provider = layer.dataProvider()
+            if provider is not None:
+                DynamicLayerStyle._set_provider_resampling_method(
+                    provider, value.get("zoomed_in"), zoomed_in=True
+                )
+                DynamicLayerStyle._set_provider_resampling_method(
+                    provider, value.get("zoomed_out"), zoomed_in=False
+                )
+                try:
+                    provider.setMaxOversampling(float(value.get("max_oversampling", 2.0)))
+                except Exception:
+                    pass
         if "stage" in value:
             try:
                 pipe = layer.pipe()
