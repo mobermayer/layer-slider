@@ -33,7 +33,7 @@ class LayerSlider:
     def __init__(self, iface: QgisInterface):
         """iface : QgisInterface provided by QGIS when plugin is loaded."""
         self.iface = iface
-        self.icon = QIcon(os.path.join(PLUGIN_DIR, "assets/icon.png"))
+        self.icon = QIcon(os.path.join(PLUGIN_DIR, "assets", "icon.png"))
         self.dock = None
         self.action = None
 

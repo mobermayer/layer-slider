@@ -180,7 +180,7 @@
    <item row="4" column="0">
     <widget class="QLabel" name="label_remove_composed">
      <property name="text">
-      <string>Composed layers</string>
+      <string>Composed Layers</string>
      </property>
     </widget>
    </item>

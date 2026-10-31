@@ -4,7 +4,7 @@ import shutil
 import traceback
 from urllib.parse import unquote, urlparse
 
-from qgis.PyQt.QtGui import QAction
+from qgis.PyQt.QtGui import QAction, QIcon
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.core import (
     QgsLayerTreeLayer,
@@ -19,11 +19,14 @@ from .DynamicLayerFactory import DynamicLayerFactory
 from .ExportDialog import ExportDialog
 from .GlobalSettings import GlobalSettings
 
+PLUGIN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
 
 class DynamicLayerExporter:
     def __init__(self, dock):
         self.dock = dock
         self._tree_context_menu_connected = False
+        self._plugin_icon = QIcon(os.path.join(PLUGIN_DIR, "assets", "icon.png"))
 
     # ------------------------------------------------------------------
     # Context menu integration
@@ -59,12 +62,12 @@ class DynamicLayerExporter:
         if menu.actions():
             menu.addSeparator()
         if self._is_canonical_dynamic_layer(dynamic_layer):
-            style_action = QAction("Use Style from First Raster", menu)
+            style_action = QAction(self._plugin_icon, "Use Style from First Raster", menu)
             style_action.triggered.connect(
                 lambda _checked=False, layer=dynamic_layer: self.dock.compose.reset_dynamic_layer_style(layer)
             )
             menu.addAction(style_action)
-        export_action = QAction("Export composed layer...", menu)
+        export_action = QAction(self._plugin_icon, "Export composed layer...", menu)
         export_action.triggered.connect(
             lambda _checked=False, layer=dynamic_layer: self.export_interactive(layer)
         )
