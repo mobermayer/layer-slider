@@ -7,7 +7,7 @@ name=Layer Slider
 qgisMinimumVersion=3.6
 qgisMaximumVersion=4.99
 description=Navigate and compose ordered layers with a slider, keyboard shortcuts, and dynamic raster compositing.
-version=1.2.0
+version=1.3.0
 author=Maximilian Obermayer
 email=software@mobermayer.at
 
@@ -18,7 +18,7 @@ about=Layer Slider is a QGIS plugin for navigating and composing ordered layers 
     For a demo, instructions and comparison to alternatives, see the homepage.
 
     If you use Layer Slider in your academic work, please cite it:
-    Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.2.0). Zenodo. https://doi.org/10.5281/zenodo.20597604 . Available at: https://github.com/mobermayer/layer-slider
+    Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.3.0). Zenodo. https://doi.org/10.5281/zenodo.23849313 . Available at: https://github.com/mobermayer/layer-slider
 
     For collaboration and research- or software-related inquiries, visit my homepage https://mobermayer.at .
 
@@ -31,7 +31,13 @@ repository=https://github.com/mobermayer/layer-slider
 license=GNU General Public License v3 (or later)
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-changelog=v1.2.0 (2026-06-08)
+changelog=v1.3.0 (2026-11-01)
+    - Composed layers styling can be changed and is persisted, defaults to styling of first layer
+    - Allow keyboard editing of compositing values
+    - (Re-)activate the selected layer on slider-handle clicks and previous/next shortcuts
+    - Improve contrast calculation of composed layer and add brightness
+
+    v1.2.0 (2026-06-08)
     - Add QGIS 4 support
     - Fix edge cases in compositing number inputs
 

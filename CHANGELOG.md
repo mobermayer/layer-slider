@@ -1,8 +1,8 @@
-# Unreleased
+# v1.3.0 (2026-11-01)
 - Composed layers styling can be changed and is persisted, defaults to styling of first layer
-- Improve contrast calculation of composed layer and add brightness
 - Allow keyboard editing of compositing values
 - (Re-)activate the selected layer on slider-handle clicks and previous/next shortcuts
+- Improve contrast calculation of composed layer and add brightness
 
 # v1.2.0 (2026-06-08)
 - Add QGIS 4 support

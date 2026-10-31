@@ -14,7 +14,7 @@ For collaboration and research- or software-related inquiries, visit my homepage
 For issues regarding the Layer Slider, please use the [issue tracker](https://github.com/mobermayer/layer-slider/issues).
 If you use Layer Slider in your academic or other published work, please cite it:
 
-> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.2.0). Zenodo. https://doi.org/10.5281/zenodo.20597604 . Available at https://github.com/mobermayer/layer-slider
+> Obermayer, M. (2026). Layer Slider – QGIS Plugin (v1.3.0). Zenodo. https://doi.org/10.5281/zenodo.23849313 . Available at https://github.com/mobermayer/layer-slider
 
 ## Demo
 Basic demonstration with ground-penetrating radar depth slices:
