@@ -388,12 +388,14 @@ class ComposeManager:
     ):
         self._style_update_guard += 1
         try:
+            canvas = self.dock.iface.mapCanvas()
             DynamicLayerStyle.apply(
                 group,
                 layer,
                 source_layer,
                 contrast_offset=self._compute_compose_contrast(num_layers),
-                canvas_extent=self.dock.iface.mapCanvas().extent(),
+                canvas_extent=canvas.extent(),
+                canvas_crs=canvas.mapSettings().destinationCrs(),
                 restore_snapshot=restore_snapshot,
                 capture_current=capture_current,
             )

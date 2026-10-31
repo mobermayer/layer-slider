@@ -6,9 +6,11 @@ from qgis.core import (
     Qgis,
     QgsBilinearRasterResampler,
     QgsContrastEnhancement,
+    QgsCoordinateTransform,
     QgsCubicRasterResampler,
     QgsHueSaturationFilter,
     QgsMapLayerStyle,
+    QgsProject,
     QgsRasterBandStats,
     QgsRasterLayer,
     QgsRasterMinMaxOrigin,
@@ -352,7 +354,12 @@ class DynamicLayerStyle:
         return origin
 
     @staticmethod
-    def _range_for_composed_layer(layer: QgsRasterLayer, range_data: dict, canvas_extent=None) -> tuple[float, float]:
+    def _range_for_composed_layer(
+        layer: QgsRasterLayer,
+        range_data: dict,
+        canvas_extent=None,
+        canvas_crs=None,
+    ) -> tuple[float, float]:
         if range_data.get("manual"):
             return float(range_data["minimum"]), float(range_data["maximum"])
 
@@ -369,7 +376,20 @@ class DynamicLayerStyle:
         if "whole" in extent_kind or "fixedcanvas" in extent_kind:
             extent = layer.extent()
         elif "updatedcanvas" in extent_kind:
-            extent = canvas_extent if canvas_extent is not None else layer.extent()
+            if canvas_extent is None:
+                extent = layer.extent()
+            elif canvas_crs is None:
+                return float(range_data["minimum"]), float(range_data["maximum"])
+            elif canvas_crs == layer.crs():
+                extent = canvas_extent
+            else:
+                try:
+                    transform = QgsCoordinateTransform(
+                        canvas_crs, layer.crs(), QgsProject.instance()
+                    )
+                    extent = transform.transformBoundingBox(canvas_extent)
+                except Exception:
+                    return float(range_data["minimum"]), float(range_data["maximum"])
         else:
             extent = layer.extent()
         accuracy = str(origin.get("accuracy", "Estimated")).lower()
@@ -412,14 +432,16 @@ class DynamicLayerStyle:
         return renderer
 
     @staticmethod
-    def _apply_min_max(layer: QgsRasterLayer, value: dict, canvas_extent=None):
+    def _apply_min_max(layer: QgsRasterLayer, value: dict, canvas_extent=None, canvas_crs=None):
         renderer = DynamicLayerStyle._ensure_gray_renderer(layer)
         renderer.setMinMaxOrigin(DynamicLayerStyle._copy_origin(value.get("origin") or {}))
 
         algorithm = QgsContrastEnhancement.contrastEnhancementAlgorithmFromString(
             value.get("algorithm", "StretchToMinimumMaximum")
         )
-        minimum, maximum = DynamicLayerStyle._range_for_composed_layer(layer, value, canvas_extent)
+        minimum, maximum = DynamicLayerStyle._range_for_composed_layer(
+            layer, value, canvas_extent, canvas_crs
+        )
         enhancement = QgsContrastEnhancement(layer.dataProvider().dataType(1))
         enhancement.setContrastEnhancementAlgorithm(algorithm)
         enhancement.setMinimumValue(minimum)
@@ -569,9 +591,15 @@ class DynamicLayerStyle:
         return profile
 
     @staticmethod
-    def _apply_property(layer: QgsRasterLayer, key: str, value: Any, canvas_extent=None):
+    def _apply_property(
+        layer: QgsRasterLayer,
+        key: str,
+        value: Any,
+        canvas_extent=None,
+        canvas_crs=None,
+    ):
         if key == "min_max":
-            DynamicLayerStyle._apply_min_max(layer, value, canvas_extent)
+            DynamicLayerStyle._apply_min_max(layer, value, canvas_extent, canvas_crs)
         elif key == "gray_gradient":
             renderer = DynamicLayerStyle._ensure_gray_renderer(layer)
             try:
@@ -633,6 +661,7 @@ class DynamicLayerStyle:
         canvas_extent=None,
         restore_snapshot: bool = False,
         capture_current: bool = True,
+        canvas_crs=None,
     ) -> dict:
         if capture_current:
             state = DynamicLayerStyle.capture_manual_changes(group, composed_layer, save_snapshot=True)
@@ -650,7 +679,9 @@ class DynamicLayerStyle:
         )
         overrides = state.get("overrides", {})
         for key, value in baseline.items():
-            DynamicLayerStyle._apply_property(composed_layer, key, value, canvas_extent)
+            DynamicLayerStyle._apply_property(
+                composed_layer, key, value, canvas_extent, canvas_crs
+            )
 
         automatic_values = DynamicLayerStyle._capture_values(composed_layer)
         automatic_baseline = dict(state.get("baseline", {}))
@@ -660,7 +691,9 @@ class DynamicLayerStyle:
 
         for key, value in overrides.items():
             if key in baseline:
-                DynamicLayerStyle._apply_property(composed_layer, key, value, canvas_extent)
+                DynamicLayerStyle._apply_property(
+                    composed_layer, key, value, canvas_extent, canvas_crs
+                )
 
         # Keep the comparison point at the automatic values, apart from active overrides.
         state["baseline"] = automatic_baseline
