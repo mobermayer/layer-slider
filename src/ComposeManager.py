@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional
+import logging
 import os
 import re
 import shutil
@@ -22,6 +23,8 @@ from .DynamicLayerStyle import DynamicLayerStyle
 from .ExportDialog import ExportDialog
 from .GlobalSettings import GlobalSettings
 from . import LayerRangeMapper
+
+LOGGER = logging.getLogger(__name__)
 
 LAYER_SUFFIX_NUMBER_RE = re.compile(
     r"^(?P<prefix>.*?)(?P<start>\d+)(?:\s*[-–—]+\s*(?P<end>\d+))?\s*$"
@@ -49,7 +52,7 @@ class ComposeManager:
             QgsProject.instance().layersWillBeRemoved.connect(self._on_project_layers_will_be_removed)
             self._project_removal_signal_connected = True
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         self._connect_layer_tree_root_signal()
 
     # ------------------------------------------------------------------
@@ -106,7 +109,7 @@ class ComposeManager:
                 if matches_origin(layer):
                     return layer
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
         for layer in QgsProject.instance().mapLayers().values():
             if matches_origin(layer):
@@ -139,7 +142,7 @@ class ComposeManager:
                 if node.layer() is not None:
                     return node
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
             self._dynamic_nodes.pop(uid, None)
         return self._find_and_cache_dynamic_tree_node(uid)
 
@@ -148,7 +151,7 @@ class ComposeManager:
             try:
                 layer.styleChanged.disconnect(callback)
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         self._dynamic_style_callbacks.clear()
         self._dynamic_nodes.clear()
         self._origin_group_nodes.clear()
@@ -170,7 +173,7 @@ class ComposeManager:
                 if isinstance(tnode, QgsLayerTreeLayer):
                     self._dynamic_nodes[ou] = tnode
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
         for origin_uuid, node in list(self._dynamic_nodes.items()):
             try:
@@ -191,7 +194,7 @@ class ComposeManager:
             try:
                 self._connect_dynamic_style_tracking(node.layer())
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
     def _connect_layer_tree_root_signal(self, root=None):
         new_root = root or QgsProject.instance().layerTreeRoot()
@@ -199,7 +202,7 @@ class ComposeManager:
             try:
                 group.addedChildren.disconnect(callback)
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         self._layer_tree_group_callbacks.clear()
 
         def connect_group(group):
@@ -208,7 +211,7 @@ class ComposeManager:
                 group.addedChildren.connect(callback)
                 self._layer_tree_group_callbacks.append((group, callback))
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
             for child in group.children():
                 if isinstance(child, QgsLayerTreeGroup):
                     connect_group(child)
@@ -258,7 +261,7 @@ class ComposeManager:
                         QTimer.singleShot(0, self._repair_group_ids_after_tree_change)
                     break
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
     def _repair_group_ids_after_tree_change(self):
         self._group_repair_scheduled = False
@@ -268,7 +271,7 @@ class ComposeManager:
             self._repair_duplicate_group_ids(QgsProject.instance().layerTreeRoot())
             self._connect_layer_tree_root_signal(QgsProject.instance().layerTreeRoot())
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
     @staticmethod
     def _is_source_raster(layer) -> bool:
@@ -294,7 +297,7 @@ class ComposeManager:
             if count > 0:
                 return count
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         if isinstance(group, QgsLayerTreeGroup):
             count = 0
             for child in group.children():
@@ -317,7 +320,7 @@ class ComposeManager:
             layer.styleChanged.connect(callback)
             self._dynamic_style_callbacks[layer_id] = (layer, callback)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
     def _disconnect_dynamic_style_tracking(self, layer):
         if layer is None:
@@ -331,7 +334,7 @@ class ComposeManager:
             try:
                 record[0].styleChanged.disconnect(record[1])
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
     def _on_project_layers_will_be_removed(self, layer_ids):
         if isinstance(layer_ids, str):
@@ -342,20 +345,20 @@ class ComposeManager:
                 self._save_dynamic_style_before_removal(layer)
                 self._disconnect_dynamic_style_tracking(layer)
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
     def disconnect_project_signals(self):
         if self._project_removal_signal_connected:
             try:
                 QgsProject.instance().layersWillBeRemoved.disconnect(self._on_project_layers_will_be_removed)
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
             self._project_removal_signal_connected = False
         for group, callback in self._layer_tree_group_callbacks:
             try:
                 group.addedChildren.disconnect(callback)
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         self._layer_tree_group_callbacks.clear()
         self._layer_tree_root = None
 
@@ -443,7 +446,7 @@ class ComposeManager:
                 if hasattr(node, "layer") and node.layer() is not None:
                     layer_id = node.layer().id()
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         if layer_id is None:
             layer = self._find_canonical_dynamic_layer(key)
             if layer is not None:
@@ -463,7 +466,7 @@ class ComposeManager:
                             parent.removeChildNode(node)
                             removed = True
                 except Exception:
-                    pass
+                    LOGGER.debug("Optional operation failed", exc_info=True)
         return removed
 
     def _save_dynamic_style_before_removal(self, layer):
@@ -539,7 +542,7 @@ class ComposeManager:
                 if DynamicLayerFactory.find_group_by_layer_slider_uuid(root, ouuid) is None:
                     layers_to_remove.append(layer)
             except Exception:
-                continue
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
         remove_ids = {lyr.id() for lyr in layers_to_remove}
         for uid, nd in list(self._dynamic_nodes.items()):
@@ -556,7 +559,7 @@ class ComposeManager:
                 self._disconnect_dynamic_style_tracking(layer)
                 project.removeMapLayer(layer.id())
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
     def remove_stale_dynamic_layers(self):
         project = QgsProject.instance()
@@ -793,7 +796,7 @@ class ComposeManager:
             try:
                 task.cancel()
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
             self._active_single_compose_task = None
             self._active_single_compose_request = None
         return self._compose_request_token
@@ -869,7 +872,7 @@ class ComposeManager:
         try:
             task.setDependentLayers(request["layers"])
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         task_holder["task"] = task
         self._active_single_compose_task = task
         self._active_single_compose_request = request
@@ -906,7 +909,7 @@ class ComposeManager:
             try:
                 os.utime(cached_path, None)
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
             self._apply_cached_single_compose_result(request)
             return
 
@@ -994,7 +997,7 @@ class ComposeManager:
                 try:
                     os.utime(entry["cached_path"], None)
                 except Exception:
-                    pass
+                    LOGGER.debug("Optional operation failed", exc_info=True)
                 continue
             requests.append(entry)
         return requests
@@ -1051,7 +1054,7 @@ class ComposeManager:
                             if dynamic_index <= insert_index:
                                 insert_index = dynamic_index
                     except Exception:
-                        pass
+                        LOGGER.debug("Optional operation failed", exc_info=True)
 
         insert_index = max(0, min(insert_index, len(parent_group.children())))
 
@@ -1128,7 +1131,7 @@ class ComposeManager:
                         try:
                             os.utime(cached_path, None)
                         except Exception:
-                            pass
+                            LOGGER.debug("Optional operation failed", exc_info=True)
 
                     if export_directory:
                         shutil.copy2(cached_path, entry["output_path"])
@@ -1216,7 +1219,7 @@ class ComposeManager:
                 dependent_layers.extend(entry["layers"])
             task.setDependentLayers(dependent_layers)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
         def _on_precalc_progress(progress: float):
             if self._active_batch_precalc_task is task_holder["task"]:
@@ -1266,7 +1269,7 @@ class ComposeManager:
             try:
                 self._active_batch_precalc_task.cancel()
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
             self.dock.btn_precalc_all.setToolTip("Cancelling pre-calculation...")
             return
 
@@ -1312,6 +1315,6 @@ class ComposeManager:
             try:
                 task.cancel()
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         self._active_batch_precalc_task = None
         self.update_precalc_button_state()

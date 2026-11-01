@@ -1,4 +1,5 @@
 from typing import Optional
+import logging
 import os
 import shutil
 import traceback
@@ -18,6 +19,8 @@ from .ComposeManager import ComposeManager
 from .DynamicLayerFactory import DynamicLayerFactory
 from .ExportDialog import ExportDialog
 from .GlobalSettings import GlobalSettings
+
+LOGGER = logging.getLogger(__name__)
 
 PLUGIN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -50,7 +53,7 @@ class DynamicLayerExporter:
             if lt is not None and hasattr(lt, "contextMenuAboutToShow"):
                 lt.contextMenuAboutToShow.disconnect(self._on_context_menu_about_to_show)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         self._tree_context_menu_connected = False
 
     def _on_context_menu_about_to_show(self, menu):
@@ -286,7 +289,7 @@ class DynamicLayerExporter:
                     if exported_node is not None:
                         self.dock.set_item_visible(exported_node, True)
                 except Exception:
-                    pass
+                    LOGGER.debug("Optional operation failed", exc_info=True)
                 added_to_qgis = 1
             except Exception:
                 QMessageBox.warning(

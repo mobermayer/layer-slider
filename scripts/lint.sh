@@ -1,11 +1,12 @@
 #!/bin/bash
 
-# Run the (approximately?) same quality/security checks that the QGIS plugin repository's
-# auto-check performs on upload, plus a local .ui enum syntax check:
+# Run the QGIS plugin repository's Python quality/security tools locally, plus
+# flake8-qgis rules and a local .ui enum syntax check:
 #   - flake8 (+ flake8-qgis) for code quality and QGIS-specific rules
-#   - bandit                 for security issues
+#   - bandit                 for security issues, including low-severity findings
 #   - detect-secrets         for leaked credentials / secrets
 #   - ui-enums               for Qt5-compatible enum syntax in .ui files (QGIS 3)
+#   - qgis4-enums            for known legacy QGIS enum syntax flagged by QGIS 4 checks
 #
 # All tools are installed into a local virtualenv (.venv-lint) on first run
 # and reused afterwards, so no system-wide Python packages are required.
@@ -16,6 +17,7 @@
 #   scripts/lint.sh bandit [args]
 #   scripts/lint.sh secrets [args]
 #   scripts/lint.sh ui-enums       # Qt5-compatible enum syntax in .ui files
+#   scripts/lint.sh qgis4-enums    # targeted QGIS 4 enum compatibility check
 
 set -euo pipefail
 
@@ -62,14 +64,15 @@ run_flake8() {
     echo "=== flake8 ==="
     # --show-source prints the offending line + caret under each finding by
     # default, making it easier to see the issue in context.
-    "${VENV_DIR}/bin/flake8" --show-source "$@" "${TARGETS[@]}"
+    "${VENV_DIR}/bin/flake8" --jobs 1 --max-line-length=120 --show-source "$@" "${TARGETS[@]}"
 }
 
 run_bandit() {
     echo "=== bandit ==="
-    # Default to medium+ severity so noisy LOW findings (e.g. subprocess import
-    # warnings) are hidden. Pass --severity-level low / all to override.
-    "${VENV_DIR}/bin/bandit" --quiet --recursive --severity-level medium "$@" "${TARGETS[@]}"
+    # The QGIS scanner runs Bandit without a severity threshold. Keep low
+    # findings such as B110 visible because the repository treats the Bandit
+    # check as blocking when it reports any finding.
+    "${VENV_DIR}/bin/bandit" --quiet --recursive "$@" "${TARGETS[@]}"
 }
 
 run_secrets() {
@@ -108,12 +111,25 @@ run_ui_enums() {
     return "${status}"
 }
 
+run_qgis4_enums() {
+    echo "=== qgis4-enums ==="
+    local matches
+    matches=$(grep -RnE --include='*.py' 'QgsRasterBandStats\.All([^[:alnum:]_]|$)' src || true)
+    if [ -n "${matches}" ]; then
+        echo "Legacy QgsRasterBandStats.All enum syntax is incompatible with QGIS 4:" >&2
+        echo "${matches}" >&2
+        echo "Use the scoped Stats enum, with a fallback for older QGIS 3 releases." >&2
+        return 1
+    fi
+}
+
 if [ $# -eq 0 ]; then
     status=0
     run_flake8 || status=$?
     run_bandit || status=$?
     run_secrets || status=$?
     run_ui_enums || status=$?
+    run_qgis4_enums || status=$?
     exit "${status}"
 fi
 
@@ -122,9 +138,10 @@ case "$1" in
     bandit)   shift; run_bandit "$@" ;;
     secrets)  shift; run_secrets "$@" ;;
     ui-enums) shift; run_ui_enums "$@" ;;
+    qgis4-enums) shift; run_qgis4_enums "$@" ;;
     *)
         echo "Unknown subcommand: $1" >&2
-        echo "Usage: $0 [flake8|bandit|secrets|ui-enums] [extra args...]" >&2
+        echo "Usage: $0 [flake8|bandit|secrets|ui-enums|qgis4-enums] [extra args...]" >&2
         exit 2
         ;;
 esac

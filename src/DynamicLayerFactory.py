@@ -3,9 +3,11 @@ from qgis.core import Qgis, QgsCoordinateTransformContext, QgsLayerTreeGroup, Qg
 from qgis.analysis import QgsRasterCalculator, QgsRasterCalculatorEntry
 from osgeo import gdal
 import math
+import logging
 import os
+# Cache-key primitives are hashed without deserializing the pickle bytes.
+import pickle  # nosec B403
 import shutil
-import pickle
 import hashlib
 import threading
 import time
@@ -14,6 +16,7 @@ from .GlobalSettings import GlobalSettings
 
 PLUGIN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 TMP_DIR = os.path.join(PLUGIN_DIR, ".tmp")
+LOGGER = logging.getLogger(__name__)
 
 
 class DynamicLayerFactory:
@@ -89,12 +92,12 @@ class DynamicLayerFactory:
             if isinstance(existing, str) and existing.strip():
                 return existing.strip()
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         u = uuid.uuid4().hex
         try:
             group.setCustomProperty(DynamicLayerFactory.GROUP_UUID_PROPERTY, u)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         return u
 
     @staticmethod
@@ -131,7 +134,10 @@ class DynamicLayerFactory:
                         continue
                     if layer.id() != layer.customProperty(DynamicLayerFactory.ORIGINAL_ID_PROPERTY, None):
                         continue
-                    if str(layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or "").strip() != existing:
+                    layer_origin = str(
+                        layer.customProperty(DynamicLayerFactory.ORIGIN_GROUP_UUID_PROPERTY, "") or ""
+                    ).strip()
+                    if layer_origin != existing:
                         continue
                     node = root.findLayer(layer.id())
                     parent = node.parent() if node is not None else None
@@ -141,10 +147,10 @@ class DynamicLayerFactory:
                         if index + 1 < len(siblings) and siblings[index + 1] in matches:
                             keep = siblings[index + 1]
                     except Exception:
-                        pass
+                        LOGGER.debug("Optional operation failed", exc_info=True)
                     break
                 except Exception:
-                    continue
+                    LOGGER.debug("Optional operation failed", exc_info=True)
 
         if group is keep:
             return existing
@@ -178,12 +184,12 @@ class DynamicLayerFactory:
                         if (child.customProperty(DynamicLayerFactory.GROUP_UUID_PROPERTY, "") or "") == key:
                             return child
                     except Exception:
-                        pass
+                        LOGGER.debug("Optional operation failed", exc_info=True)
                     found = DynamicLayerFactory.find_group_by_layer_slider_uuid(child, key)
                     if found is not None:
                         return found
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         return None
 
     @staticmethod
@@ -212,7 +218,7 @@ class DynamicLayerFactory:
                 try:
                     os.utime(cached_path, None)
                 except Exception:
-                    pass
+                    LOGGER.debug("Optional operation failed", exc_info=True)
                 return cached_path
 
             run_token = uuid.uuid4().hex
@@ -502,7 +508,7 @@ class DynamicLayerFactory:
             if candidate_dtype != int(gdal.GDT_Unknown):
                 detected_datatype = candidate_dtype
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
         try:
             if hasattr(provider, "sourceHasNoDataValue") and provider.sourceHasNoDataValue(non_alpha_band):
@@ -512,7 +518,7 @@ class DynamicLayerFactory:
                     if math.isfinite(candidate_nodata_f):
                         detected_nodata = candidate_nodata_f
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
         source_uris = [provider.dataSourceUri(), layer.source()]
         seen = set()

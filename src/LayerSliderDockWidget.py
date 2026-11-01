@@ -23,6 +23,7 @@ from qgis.core import (
     QgsRasterLayer,
 )
 from qgis.PyQt.QtCore import QEvent, Qt, QTimer, pyqtSignal
+import logging
 import os
 
 from .FocusAwareSpinBox import FocusAwareSpinBox
@@ -33,6 +34,8 @@ from .DynamicLayerFactory import DynamicLayerFactory
 from .DynamicLayerExporter import DynamicLayerExporter
 from . import LayerRangeMapper
 from .SettingsDialog import SettingsDialog
+
+LOGGER = logging.getLogger(__name__)
 
 FORM_CLASS_LAYER, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), 'LayerSliderDockWidgetBase.ui'))
 
@@ -222,7 +225,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
             self._slider_qss_applied = text
             s.setStyleSheet(text)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
     def unload(self):
         self._unloaded = True
@@ -230,29 +233,29 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         try:
             self.slider.removeEventFilter(self)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         try:
             self.slider.rangeChanged.disconnect(self._update_slider_handle_style)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         try:
             self.slider.sliderPressed.disconnect(self._on_slider_pressed)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         try:
             self.slider.sliderReleased.disconnect(self._on_slider_released)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
         pj = QgsProject.instance()
         try:
             pj.layersAdded.disconnect(self._on_project_layers_changed)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         try:
             pj.layersRemoved.disconnect(self._on_project_layers_changed)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         self.compose.disconnect_project_signals()
 
         try:
@@ -262,7 +265,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                 sel.currentChanged.disconnect(self.on_tree_selection_changed)
                 sel.selectionChanged.disconnect(self.on_selection_changed)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
         self.compose.detach_dynamic_node()
         self.compose.remove_stale_dynamic_layers()
@@ -271,13 +274,13 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                 self.settings_dialog.settings_changed.disconnect(self.on_compose_settings_changed)
                 self.settings_dialog.deleteLater()
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         self.exporter.disconnect_tree_context_menu()
         try:
             self.hide()
             self.setParent(None)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
     # ------------------------------------------------------------------
     # Selection signal management
@@ -295,7 +298,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                 self._lt_selection_model.currentChanged.disconnect(self.on_tree_selection_changed)
                 self._lt_selection_model.selectionChanged.disconnect(self.on_selection_changed)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         self._lt_selection_model = None
 
     def _on_project_about_to_clear(self):
@@ -313,7 +316,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         try:
             was_locked = self.chk_lockgroups.isChecked()
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         self.compose.invalidate_single_compose_request(cancel_task=False)
         self.compose.detach_dynamic_node()
         self.compose.remove_canonical_dynamics_with_missing_origin()
@@ -324,19 +327,19 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
             self.chk_lockgroups.setChecked(False)
             self.chk_avgrasters.setChecked(False)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         try:
             self.chk_lockgroups.blockSignals(False)
             self.chk_avgrasters.blockSignals(False)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         self.update_lockgroups_layout()
         self.compose.update_precalc_button_state()
         if run_unlock_side_effects and was_locked:
             try:
                 self.on_chk_lockgroups_toggled(False)
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
     # ------------------------------------------------------------------
     # Layer tree root attachment
@@ -793,7 +796,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                 self._update_label_only(self.slider.value())
                 self.update_btn_reset_text()
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
     def on_tree_visibility_changed(self, node):
         if self.update_lock > 0:
@@ -844,7 +847,9 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
                 role_ids = {int(role) for role in roles}
             except Exception:
                 role_ids = set()
-            if role_ids and int(Qt.ItemDataRole.DisplayRole) not in role_ids and int(Qt.ItemDataRole.EditRole) not in role_ids:
+            if role_ids and int(Qt.ItemDataRole.DisplayRole) not in role_ids and int(
+                Qt.ItemDataRole.EditRole
+            ) not in role_ids:
                 return
         self._schedule_group_refresh(0)
 
@@ -1290,7 +1295,7 @@ class LayerSliderDockWidget(QgsDockWidget, FORM_CLASS_LAYER):
         try:
             self.iface.mapCanvas().refresh()
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         self.compose.update_precalc_button_state()
         self.update_btn_reset_text()
         self._update_label_only(self.slider.value())

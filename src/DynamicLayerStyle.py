@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, Optional
 
 from qgis.PyQt.QtGui import QColor
@@ -20,6 +21,8 @@ from qgis.core import (
 )
 
 from .GlobalSettings import GlobalSettings
+
+LOGGER = logging.getLogger(__name__)
 
 
 class DynamicLayerStyle:
@@ -60,7 +63,7 @@ class DynamicLayerStyle:
                 state.setdefault("overrides", {})
                 return state
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         return {"version": 1, "baseline": {}, "overrides": {}, "style_xml": ""}
 
     @staticmethod
@@ -72,7 +75,7 @@ class DynamicLayerStyle:
             if existing != encoded:
                 group.setCustomProperty(DynamicLayerStyle.GROUP_STATE_PROPERTY, encoded)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
     @staticmethod
     def _same_value(left: Any, right: Any) -> bool:
@@ -175,7 +178,7 @@ class DynamicLayerStyle:
         try:
             stage = pipe.resamplingStage()
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
         values = {
             "on": bool(filter_.on()) if filter_ is not None else True,
@@ -202,23 +205,23 @@ class DynamicLayerStyle:
                     provider.zoomedInResamplingMethod()
                 )
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
             try:
                 values["zoomed_out"] = DynamicLayerStyle._provider_resampling_method_name(
                     provider.zoomedOutResamplingMethod()
                 )
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
             try:
                 values["max_oversampling"] = float(provider.maxOversampling())
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
         if stage is not None:
             try:
                 values["stage"] = int(stage)
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         return values
 
     @staticmethod
@@ -228,7 +231,7 @@ class DynamicLayerStyle:
         try:
             return stage == Qgis.RasterResamplingStage.Provider
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         try:
             return int(stage) == 1
         except Exception:
@@ -268,13 +271,13 @@ class DynamicLayerStyle:
         try:
             values["opacity"] = float(layer.opacity())
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         renderer = layer.renderer()
         if renderer is not None:
             try:
                 values["renderer_opacity"] = float(renderer.opacity())
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         min_max = DynamicLayerStyle._capture_range(layer)
         if min_max is not None:
             values["min_max"] = min_max
@@ -305,7 +308,7 @@ class DynamicLayerStyle:
         try:
             values["blend_mode"] = int(layer.blendMode())
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         return values
 
     @staticmethod
@@ -328,7 +331,7 @@ class DynamicLayerStyle:
                 style.readFromLayer(layer)
                 state["style_xml"] = str(style.xmlData())
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         DynamicLayerStyle._save_state(group, state)
         return state
 
@@ -352,7 +355,7 @@ class DynamicLayerStyle:
             origin.setCumulativeCutUpper(float(origin_data.get("cumulative_cut_upper", 0.98)))
             origin.setStdDevFactor(float(origin_data.get("stddev_factor", 2.0)))
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         return origin
 
     @staticmethod
@@ -398,7 +401,8 @@ class DynamicLayerStyle:
         sample_size = 0 if "exact" in accuracy else int(QgsRasterLayer.SAMPLE_SIZE)
 
         try:
-            stats = provider.bandStatistics(1, QgsRasterBandStats.All, extent, sample_size)
+            stats_enum = getattr(QgsRasterBandStats, "Stats", QgsRasterBandStats)
+            stats = provider.bandStatistics(1, stats_enum.All, extent, sample_size)
             minimum = float(stats.minimumValue)
             maximum = float(stats.maximumValue)
             if "stddev" in limits:
@@ -463,7 +467,7 @@ class DynamicLayerStyle:
                 pixel.percentTransparent = float(item[2])
                 pixels.append(pixel)
             except Exception:
-                continue
+                LOGGER.debug("Optional operation failed", exc_info=True)
         transparency.setTransparentSingleValuePixelList(pixels)
         renderer.setRasterTransparency(transparency)
 
@@ -484,7 +488,7 @@ class DynamicLayerStyle:
             filter_.setColorizeColor(QColor(*[int(part) for part in rgba]))
             filter_.setInvertColors(bool(value.get("invert_colors", False)))
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
     @staticmethod
     def _make_resampler(value: str):
@@ -507,7 +511,7 @@ class DynamicLayerStyle:
             method = type(current_method)(method_value)
             getattr(provider, setter_name)(method)
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
 
     @staticmethod
     def _apply_resampling(layer: QgsRasterLayer, value: dict):
@@ -529,13 +533,13 @@ class DynamicLayerStyle:
                 try:
                     provider.setMaxOversampling(float(value.get("max_oversampling", 2.0)))
                 except Exception:
-                    pass
+                    LOGGER.debug("Optional operation failed", exc_info=True)
         if "stage" in value:
             try:
                 pipe = layer.pipe()
                 pipe.setResamplingStage(type(pipe.resamplingStage())(int(value["stage"])))
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
     @staticmethod
     def _source_profile(
@@ -571,11 +575,11 @@ class DynamicLayerStyle:
             try:
                 profile["opacity"] = float(source_layer.opacity())
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
             try:
                 profile["renderer_opacity"] = float(source_renderer.opacity())
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
         brightness = source_layer.pipe().brightnessFilter()
         if brightness is not None:
@@ -601,7 +605,7 @@ class DynamicLayerStyle:
         try:
             profile["blend_mode"] = int(source_layer.blendMode())
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         return profile
 
     @staticmethod
@@ -619,21 +623,21 @@ class DynamicLayerStyle:
             try:
                 renderer.setGradient(type(renderer.gradient())(int(value)))
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         elif key == "transparency":
             DynamicLayerStyle._apply_transparency(layer, value)
         elif key == "opacity":
             try:
                 layer.setOpacity(float(value))
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         elif key == "renderer_opacity":
             renderer = layer.renderer()
             if renderer is not None:
                 try:
                     renderer.setOpacity(float(value))
                 except Exception:
-                    pass
+                    LOGGER.debug("Optional operation failed", exc_info=True)
         elif key in ("brightness", "contrast", "gamma", "brightness_on"):
             filter_ = layer.pipe().brightnessFilter()
             if filter_ is None:
@@ -648,7 +652,7 @@ class DynamicLayerStyle:
                 else:
                     filter_.setOn(bool(value))
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         elif key == "hue_saturation":
             DynamicLayerStyle._apply_hue_saturation(layer, value)
         elif key == "resampling":
@@ -659,12 +663,12 @@ class DynamicLayerStyle:
                 layer.setMinimumScale(float(value["minimum"]))
                 layer.setMaximumScale(float(value["maximum"]))
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
         elif key == "blend_mode":
             try:
                 layer.setBlendMode(type(layer.blendMode())(int(value)))
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
     @staticmethod
     def apply(
@@ -686,7 +690,7 @@ class DynamicLayerStyle:
             try:
                 QgsMapLayerStyle(state["style_xml"]).writeToLayer(composed_layer)
             except Exception:
-                pass
+                LOGGER.debug("Optional operation failed", exc_info=True)
 
         # The plugin identity belongs to the canonical layer and must survive style restores.
         baseline = DynamicLayerStyle._source_profile(
@@ -721,7 +725,7 @@ class DynamicLayerStyle:
             style.readFromLayer(composed_layer)
             state["style_xml"] = str(style.xmlData())
         except Exception:
-            pass
+            LOGGER.debug("Optional operation failed", exc_info=True)
         DynamicLayerStyle._save_state(group, state)
         composed_layer.triggerRepaint()
         return state

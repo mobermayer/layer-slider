@@ -87,16 +87,63 @@ class LayerSlider:
 
     def register_shortcuts(self):
         window = self.iface.mainWindow()
-        self.shortcut_settings = self.register_shortcut(QAction(self.icon, "Layer Slider - settings", window), "", self.show_settings, self.set_settings_shortcut)
-        self.shortcut_left = self.register_shortcut(QAction(self.icon, "Layer Slider - previous layer", window), "D", self.shortcut_left_triggered, self.set_slider_tooltip)
-        self.shortcut_right = self.register_shortcut(QAction(self.icon, "Layer Slider - next layer", window), "F", self.shortcut_right_triggered, self.set_slider_tooltip)
-        self.shortcut_toggle_show_selected = self.register_shortcut(QAction(self.icon, "Layer Slider - toggle visibility of selected layer in tree", window), "C", self.toggle_show_selected, self.set_btn_reset_shortcut)
-        self.shortcut_toggle_show_all = self.register_shortcut(QAction(self.icon, "Layer Slider - toggle show current layer", window), "V", self.toggle_show_all, self.set_btn_reset_shortcut)
-        self.shortcut_toggle_lock = self.register_shortcut(QAction(self.icon, "Layer Slider - toggle lock layers", window), "Shift+D", self.shortcut_toggle_lock_triggered, self.set_chk_lockgroups_shortcut)
-        self.shortcut_toggle_avgrasters = self.register_shortcut(QAction(self.icon, "Layer Slider - toggle compose rasters", window), "Shift+F", self.toggle_avgrasters, self.set_chk_avgrasters_shortcut)
-        self.shortcut_toggle_avgdistinct = self.register_shortcut(QAction(self.icon, "Layer Slider - toggle compose distinct", window), "", self.toggle_avgdistinct, self.set_chk_avgdistinct_shortcut)
-        self.shortcut_precalc_all = self.register_shortcut(QAction(self.icon, "Layer Slider - pre-compute all composed ranges", window), "", self.trigger_precalc_all, self.set_precalc_shortcut)
-        self.shortcut_export_to_directory = self.register_shortcut(QAction(self.icon, "Layer Slider - export to directory", window), "", self.trigger_export_to_directory, self.set_export_shortcut)
+        self.shortcut_settings = self.register_shortcut(
+            QAction(self.icon, "Layer Slider - settings", window), "", self.show_settings, self.set_settings_shortcut
+        )
+        self.shortcut_left = self.register_shortcut(
+            QAction(self.icon, "Layer Slider - previous layer", window),
+            "D",
+            self.shortcut_left_triggered,
+            self.set_slider_tooltip,
+        )
+        self.shortcut_right = self.register_shortcut(
+            QAction(self.icon, "Layer Slider - next layer", window),
+            "F",
+            self.shortcut_right_triggered,
+            self.set_slider_tooltip,
+        )
+        self.shortcut_toggle_show_selected = self.register_shortcut(
+            QAction(self.icon, "Layer Slider - toggle visibility of selected layer in tree", window),
+            "C",
+            self.toggle_show_selected,
+            self.set_btn_reset_shortcut,
+        )
+        self.shortcut_toggle_show_all = self.register_shortcut(
+            QAction(self.icon, "Layer Slider - toggle show current layer", window),
+            "V",
+            self.toggle_show_all,
+            self.set_btn_reset_shortcut,
+        )
+        self.shortcut_toggle_lock = self.register_shortcut(
+            QAction(self.icon, "Layer Slider - toggle lock layers", window),
+            "Shift+D",
+            self.shortcut_toggle_lock_triggered,
+            self.set_chk_lockgroups_shortcut,
+        )
+        self.shortcut_toggle_avgrasters = self.register_shortcut(
+            QAction(self.icon, "Layer Slider - toggle compose rasters", window),
+            "Shift+F",
+            self.toggle_avgrasters,
+            self.set_chk_avgrasters_shortcut,
+        )
+        self.shortcut_toggle_avgdistinct = self.register_shortcut(
+            QAction(self.icon, "Layer Slider - toggle compose distinct", window),
+            "",
+            self.toggle_avgdistinct,
+            self.set_chk_avgdistinct_shortcut,
+        )
+        self.shortcut_precalc_all = self.register_shortcut(
+            QAction(self.icon, "Layer Slider - pre-compute all composed ranges", window),
+            "",
+            self.trigger_precalc_all,
+            self.set_precalc_shortcut,
+        )
+        self.shortcut_export_to_directory = self.register_shortcut(
+            QAction(self.icon, "Layer Slider - export to directory", window),
+            "",
+            self.trigger_export_to_directory,
+            self.set_export_shortcut,
+        )
 
     def unregister_shortcut(self, action: QAction | None, on_keys_changed=None) -> None:
         if action is None:
@@ -113,13 +160,25 @@ class LayerSlider:
     def unregister_shortcuts(self):
         self.shortcut_right = self.unregister_shortcut(self.shortcut_right, self.set_slider_tooltip)
         self.shortcut_left = self.unregister_shortcut(self.shortcut_left, self.set_slider_tooltip)
-        self.shortcut_toggle_lock = self.unregister_shortcut(self.shortcut_toggle_lock, self.set_chk_lockgroups_shortcut)
-        self.shortcut_toggle_show_all = self.unregister_shortcut(self.shortcut_toggle_show_all, self.set_btn_reset_shortcut)
-        self.shortcut_toggle_show_selected = self.unregister_shortcut(self.shortcut_toggle_show_selected, self.set_btn_reset_shortcut)
-        self.shortcut_toggle_avgrasters = self.unregister_shortcut(self.shortcut_toggle_avgrasters, self.set_chk_avgrasters_shortcut)
-        self.shortcut_toggle_avgdistinct = self.unregister_shortcut(self.shortcut_toggle_avgdistinct, self.set_chk_avgdistinct_shortcut)
+        self.shortcut_toggle_lock = self.unregister_shortcut(
+            self.shortcut_toggle_lock, self.set_chk_lockgroups_shortcut
+        )
+        self.shortcut_toggle_show_all = self.unregister_shortcut(
+            self.shortcut_toggle_show_all, self.set_btn_reset_shortcut
+        )
+        self.shortcut_toggle_show_selected = self.unregister_shortcut(
+            self.shortcut_toggle_show_selected, self.set_btn_reset_shortcut
+        )
+        self.shortcut_toggle_avgrasters = self.unregister_shortcut(
+            self.shortcut_toggle_avgrasters, self.set_chk_avgrasters_shortcut
+        )
+        self.shortcut_toggle_avgdistinct = self.unregister_shortcut(
+            self.shortcut_toggle_avgdistinct, self.set_chk_avgdistinct_shortcut
+        )
         self.shortcut_precalc_all = self.unregister_shortcut(self.shortcut_precalc_all, self.set_precalc_shortcut)
-        self.shortcut_export_to_directory = self.unregister_shortcut(self.shortcut_export_to_directory, self.set_export_shortcut)
+        self.shortcut_export_to_directory = self.unregister_shortcut(
+            self.shortcut_export_to_directory, self.set_export_shortcut
+        )
         self.shortcut_settings = self.unregister_shortcut(self.shortcut_settings, self.set_settings_shortcut)
 
     def unload(self):

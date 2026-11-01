@@ -1,13 +1,13 @@
 [flake8]
-# Match the QGIS plugin repository's "Code Quality (Flake8)" auto-check 1:1:
-# explicitly select E/W/F (disabling flake8's default ignore list so E226 and
-# W503 are reported) plus the QGIS-specific rules from flake8-qgis.
+# Use the standard error/style families checked by the QGIS plugin repository,
+# plus local QGIS-specific rules supplied by flake8-qgis. The repository's
+# enabled Flake8 rule set is server-configured and can change independently.
 select = E, W, F, QGS
 
-# E501: line length is not enforced by the QGIS plugin repo check.
 # QGS105: passing iface as an argument is a preference; the orchestrator stores it as documented.
 # QGS201/QGS202: flagged as experimental upstream; prone to false positives.
-extend-ignore = E501, QGS105, QGS201, QGS202
+max-line-length = 120
+extend-ignore = QGS105, QGS201, QGS202
 
 exclude =
     .git,
